@@ -3,11 +3,12 @@
 
 mod descriptor;
 mod hid;
+mod racing_wheel;
+mod reports;
 
+use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprint;
-use descriptor::PID_WHEEL_DESCRIPTOR;
 use hid::HID;
 use panic_halt as _;
 use stm32f1xx_hal::adc::Adc;
@@ -56,7 +57,7 @@ fn main() -> ! {
     };
     let usb_bus = UsbBus::new(usb_peripheral);
 
-    let mut racing_wheel = HID::new(&usb_bus, PID_WHEEL_DESCRIPTOR);
+    let mut racing_wheel = HID::new(&usb_bus, RacingWheel::new());
 
     let mut usb_device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0xF055, 0x5555))
         .manufacturer("Edvin")
@@ -70,6 +71,8 @@ fn main() -> ! {
 
     // Poll USB and send state reports
     loop {
+        usb_device.poll(&mut [&mut racing_wheel]);
+
         if report_timer.wait().is_ok() {
             let x_raw: u16 = adc.read(&mut analog_x_pin).unwrap();
             let y_raw: u16 = adc.read(&mut analog_y_pin).unwrap();
@@ -80,16 +83,23 @@ fn main() -> ! {
                 + if button_a.is_high() { 1 << 4 } else { 0 }
                 + if button_b.is_high() { 1 << 5 } else { 0 };
 
-            let data = [
-                0x01, // Report ID
-                0x00, // Throttle
+            let _data = [
+                0x01,               // Report ID
+                0x00,               // Throttle
                 x.to_le_bytes()[0], // Joystick X
                 y.to_le_bytes()[0], // Joystick Y
-                buttons, // Buttons
+                buttons,            // Buttons
             ];
 
-             racing_wheel.write_report(&data).ok();
+            //racing_wheel.write_report(&data).ok();
+
+            //let pid_state_data = [
+            //    0x02,
+            //    0x00,
+            //    0x00,
+            //];
+            //
+            //racing_wheel.write_report(&pid_state_data).ok();
         }
-        usb_device.poll(&mut [&mut racing_wheel]);
     }
 }
