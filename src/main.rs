@@ -11,6 +11,7 @@ use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use hid::HID;
 use panic_halt as _;
+//use panic_abort as _;
 use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
@@ -77,29 +78,13 @@ fn main() -> ! {
             let x_raw: u16 = adc.read(&mut analog_x_pin).unwrap();
             let y_raw: u16 = adc.read(&mut analog_y_pin).unwrap();
 
-            let x = (-(x_raw as i32 / 16) + 127) as i8;
-            let y = -((y_raw as i32 / 16) - 127) as i8;
-            let buttons: u8 = 0
+            let _x = (-(x_raw as i32 / 16) + 127) as i8;
+            let _y = -((y_raw as i32 / 16) - 127) as i8;
+            let _buttons: u8 = 0
                 + if button_a.is_high() { 1 << 4 } else { 0 }
                 + if button_b.is_high() { 1 << 5 } else { 0 };
 
-            let _data = [
-                0x01,               // Report ID
-                0x00,               // Throttle
-                x.to_le_bytes()[0], // Joystick X
-                y.to_le_bytes()[0], // Joystick Y
-                buttons,            // Buttons
-            ];
-
-            //racing_wheel.write_report(&data).ok();
-
-            //let pid_state_data = [
-            //    0x02,
-            //    0x00,
-            //    0x00,
-            //];
-            //
-            //racing_wheel.write_report(&pid_state_data).ok();
+            racing_wheel.send_input_reports();
         }
     }
 }

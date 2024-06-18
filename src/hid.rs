@@ -12,24 +12,28 @@ pub trait HIDDeviceType {
     fn get_report_request<B: UsbBus>(
         &mut self,
         report_id: ReportID,
-        xfer: ControlIn<B>,
+        writer: GetReportInWriter<B>,
     ) -> Result<(), UsbError> {
-        let (_, _) = (report_id, xfer);
+        let (_, _) = (report_id, writer);
         Ok(())
     }
-    fn set_report_request<B: UsbBus>(
+    fn report_request_out(
         &mut self,
         report_id: ReportID,
-        xfer: ControlOut<B>,
-    ) -> Result<(), UsbError> {
-        let (_, _) = (report_id, xfer);
+        data: &[u8],
+    ) -> Result<Option<bool>, UsbError> {
+        let (_, _) = (report_id, data);
+        Ok(None)
+    }
+    fn send_input_reports<B: UsbBus>(&mut self, writer: ReportWriter<B>) -> Result<(), UsbError> {
+        let _ = writer;
         Ok(())
     }
 }
 
 pub struct HID<'a, D: HIDDeviceType, B: UsbBus> {
     interface_number: InterfaceNumber,
-    pub endpoint_in: EndpointIn<'a, B>,
+    endpoint_in: EndpointIn<'a, B>,
     endpoint_out: EndpointOut<'a, B>,
     device: D,
 }
@@ -44,18 +48,44 @@ impl<'a, D: HIDDeviceType, B: UsbBus> HID<'a, D, B> {
         }
     }
 
-    //pub fn write_report<const N: usize>(&mut self, report: impl HIDReport<N>) -> Result<(), ()> {
-    //    let data = report.report_bytes();
-    //    self.endpoint_in.write(&data).map(|_| ()).map_err(|_| ())
-    //}
+    pub fn send_input_reports(&mut self) {
+        let _ = self
+            .device
+            .send_input_reports(ReportWriter(&self.endpoint_in));
+    }
+}
+
+pub struct GetReportInWriter<'a, 'p, 'r, B: UsbBus>(ControlIn<'a, 'p, 'r, B>);
+impl<'a, 'p, 'r, B: UsbBus> GetReportInWriter<'a, 'p, 'r, B> {
+    pub fn accept<const N: usize>(self, report: impl HIDReportIn<N>) -> Result<(), UsbError> {
+        let data = report.report_bytes();
+        self.0.accept_with(&data)?;
+        Ok(())
+    }
+}
+pub struct ReportWriter<'a, B: UsbBus>(&'a EndpointIn<'a, B>);
+impl<'a, 'p, 'r, B: UsbBus> ReportWriter<'a, B> {
+    pub fn write_report<const N: usize>(
+        &self,
+        report: impl HIDReportIn<N>,
+    ) -> Result<(), UsbError> {
+        let data = report.report_bytes();
+        self.0.write(&data)?;
+        Ok(())
+    }
 }
 
 #[derive(PartialEq)]
 pub struct ReportID(pub ReportType, pub u8);
 
-pub trait HIDReport<const N: usize> {
+pub trait HIDReportIn<const N: usize> {
     const ID: ReportID;
     fn report_bytes(&self) -> [u8; N];
+}
+
+pub trait HIDReportOut {
+    const ID: ReportID;
+    fn into_report(bytes: &[u8]) -> Self;
 }
 
 #[derive(PartialEq)]
@@ -142,9 +172,19 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
                 let report_id = request.value.to_le_bytes()[0];
 
                 let report_identifier = ReportID(report_type, report_id);
-                self.device
-                    .set_report_request(report_identifier, xfer)
-                    .unwrap();
+                match self
+                    .device
+                    .report_request_out(report_identifier, &[])
+                    .unwrap_or_default()
+                {
+                    Some(true) => {
+                        let _ = xfer.accept();
+                    }
+                    Some(false) => {
+                        let _ = xfer.reject();
+                    }
+                    _ => {}
+                };
             }
             _ => {}
         }
@@ -158,7 +198,7 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
                 let descriptor_type = request.value.to_le_bytes()[1];
 
                 if descriptor_type == ClassDescriptorType::REPORT as u8 {
-                    xfer.accept_with_static(D::descriptor()).unwrap();
+                    let _ = xfer.accept_with_static(D::descriptor());
                 }
             }
             (RequestType::Class, HIDRequest::GET_REPORT) => {
@@ -166,9 +206,9 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
                 let report_id = request.value.to_le_bytes()[0];
 
                 let report_identifier = ReportID(report_type, report_id);
-                self.device
-                    .get_report_request(report_identifier, xfer)
-                    .unwrap();
+                let _ = self
+                    .device
+                    .get_report_request(report_identifier, GetReportInWriter(xfer));
             }
             _ => {}
         }
@@ -181,8 +221,13 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
 
         let mut buffer = [0; 1024];
         match self.endpoint_out.read(&mut buffer) {
-            Ok(_bytes_received) => {}
-            Err(_) => {}
+            Ok(bytes_received) if bytes_received > 1 => {
+                let _ = self.device.report_request_out(
+                    ReportID(ReportType::Output, buffer[0]),
+                    &buffer[1..bytes_received],
+                );
+            }
+            _ => {}
         }
     }
 }
