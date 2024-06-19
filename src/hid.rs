@@ -83,9 +83,12 @@ pub trait HIDReportIn<const N: usize> {
     fn report_bytes(&self) -> [u8; N];
 }
 
-pub trait HIDReportOut {
+pub trait HIDReportOut
+where
+    Self: Sized,
+{
     const ID: ReportID;
-    fn into_report(bytes: &[u8]) -> Self;
+    fn into_report(bytes: &[u8]) -> Option<Self>;
 }
 
 #[derive(PartialEq)]
