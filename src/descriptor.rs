@@ -539,6 +539,20 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x66, 0x00, 0x00,  //     Unit (None)
     0xC0,              //   End Collection
 
+    // PID Pool Move Report
+    0x09, 0x85,        //   Usage (PID Pool Move Report)
+    0xA1, 0x02,        //   Collection (Logical)
+    0x85, 0x0F,        //     Report ID (15)
+    0x09, 0x86,        //     Usage (Move Source)
+    0x09, 0x87,        //     Usage (Move Destination)
+    0x09, 0x88,        //     Usage (Move Length)
+    0x26, 0xFF, 0x7F,  //     Logical Maximum (32767)
+    0x75, 0x10,        //     Report Size (16)
+    0x95, 0x03,        //     Report Count (3)
+    0x92, 0x02, 0x01,  //     Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile,Buffered Bytes)
+    0xC0,              //   End Collection
+
+
     // Create New Effect Report
     0x09, 0xAB,        //   Usage (Create New Effect Report)
     0xA1, 0x02,        //   Collection (Logical)
@@ -632,6 +646,20 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x75, 0x08,        //     Report Size (8)
     0x95, 0x01,        //     Report Count (1)
     0xB1, 0x02,        //     Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x09, 0xA8,        //     Usage (Parameter Block Size)
+    0xA1, 0x02,        //     Collection (Logical)
+    0x09, 0x21,        //       Usage (Set Effect Report)
+    0x09, 0x5A,        //       Usage (Set Envelope Report)
+    0x09, 0x5F,        //       Usage (Set Condition Report)
+    0x09, 0x6E,        //       Usage (Set Periodic Report)
+    0x09, 0x73,        //       Usage (Set Constant Force Report)
+    0x09, 0x74,        //       Usage (Set Ramp Force Report)
+    0x09, 0x6B,        //       Usage (Set Custom Force Report)
+    0x26, 0xFF, 0x00,  //       Logical Maximum (255)
+    0x75, 0x08,        //       Report Size (8)
+    0x95, 0x07,        //       Report Count (7)
+    0xB1, 0x02,        //       Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0xC0,              //     End Collection
     0x09, 0xA9,        //     Usage (Device Managed Pool)
     0x09, 0xAA,        //     Usage (Shared Parameter Blocks)
     0x75, 0x01,        //     Report Size (1)
@@ -645,6 +673,7 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x95, 0x01,        //     Report Count (1)
     0xB1, 0x03,        //     Feature (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
     0xC0,              //   End Collection
+    
     0xC0,              // End Collection
 ];
 

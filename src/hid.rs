@@ -1,4 +1,5 @@
-use core::convert::{TryFrom, TryInto};
+use crate::hid_device::*;
+use core::convert::TryInto;
 use usb_device::{
     class_prelude::*,
     control::{Request, RequestType},
@@ -6,30 +7,7 @@ use usb_device::{
 
 const USB_CLASS_HID: u8 = 0x03;
 const HID_SPEC_VERSION: u16 = 0x01_11; // 01.11 in BCD
-
-pub trait HIDDeviceType {
-    fn descriptor() -> &'static [u8];
-    fn get_report_request<B: UsbBus>(
-        &mut self,
-        report_id: ReportID,
-        writer: GetReportInWriter<B>,
-    ) -> Result<(), UsbError> {
-        let (_, _) = (report_id, writer);
-        Ok(())
-    }
-    fn report_request_out(
-        &mut self,
-        report_id: ReportID,
-        data: &[u8],
-    ) -> Result<Option<bool>, UsbError> {
-        let (_, _) = (report_id, data);
-        Ok(None)
-    }
-    fn send_input_reports<B: UsbBus>(&mut self, writer: ReportWriter<B>) -> Result<(), UsbError> {
-        let _ = writer;
-        Ok(())
-    }
-}
+const MAX_PACKET_SIZE: usize = 64;
 
 pub struct HID<'a, D: HIDDeviceType, B: UsbBus> {
     interface_number: InterfaceNumber,
@@ -42,8 +20,8 @@ impl<'a, D: HIDDeviceType, B: UsbBus> HID<'a, D, B> {
     pub fn new(alloc: &'a UsbBusAllocator<B>, device: D) -> HID<'a, D, B> {
         HID {
             interface_number: alloc.interface(),
-            endpoint_in: alloc.interrupt(64, 1),
-            endpoint_out: alloc.interrupt(64, 1),
+            endpoint_in: alloc.interrupt(MAX_PACKET_SIZE as u16, 1),
+            endpoint_out: alloc.interrupt(MAX_PACKET_SIZE as u16, 1),
             device,
         }
     }
@@ -72,42 +50,6 @@ impl<'a, 'p, 'r, B: UsbBus> ReportWriter<'a, B> {
         let data = report.report_bytes();
         self.0.write(&data)?;
         Ok(())
-    }
-}
-
-#[derive(PartialEq)]
-pub struct ReportID(pub ReportType, pub u8);
-
-pub trait HIDReportIn<const N: usize> {
-    const ID: ReportID;
-    fn report_bytes(&self) -> [u8; N];
-}
-
-pub trait HIDReportOut
-where
-    Self: Sized,
-{
-    const ID: ReportID;
-    fn into_report(bytes: &[u8]) -> Option<Self>;
-}
-
-#[derive(PartialEq)]
-pub enum ReportType {
-    Input = 0x01,
-    Output = 0x02,
-    Feature = 0x03,
-}
-
-impl TryFrom<u8> for ReportType {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0x01 => Ok(ReportType::Input),
-            0x02 => Ok(ReportType::Output),
-            0x03 => Ok(ReportType::Feature),
-            _ => Err(()),
-        }
     }
 }
 
@@ -222,7 +164,7 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
             return;
         }
 
-        let mut buffer = [0; 1024];
+        let mut buffer = [0; MAX_PACKET_SIZE];
         match self.endpoint_out.read(&mut buffer) {
             Ok(bytes_received) if bytes_received > 1 => {
                 let _ = self.device.report_request_out(

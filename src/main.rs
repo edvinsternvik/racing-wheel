@@ -3,6 +3,7 @@
 
 mod descriptor;
 mod hid;
+mod hid_device;
 mod racing_wheel;
 mod reports;
 

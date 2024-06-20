@@ -1,20 +1,40 @@
 use crate::{
     descriptor::RACING_WHEEL_DESCRIPTOR,
-    hid::{GetReportInWriter, HIDDeviceType, HIDReportIn, HIDReportOut, ReportID, ReportWriter},
+    hid::{GetReportInWriter, ReportWriter},
+    hid_device::{HIDDeviceType, HIDReport, HIDReportOut, ReportID},
     reports::{
-        BlockLoadStatus, CreateNewEffectReport, PIDBlockFreeReport, PIDBlockLoadReport,
-        PIDPoolReport, PIDStateReport,
+        BlockLoadStatus, CreateNewEffectReport, CustomForceDataReport, DeviceGainReport,
+        EffectOperationReport, PIDBlockFreeReport, PIDBlockLoadReport, PIDDeviceControl,
+        PIDPoolReport, PIDStateReport, SetConditionReport, SetConstantForceReport,
+        SetCustomForceReport, SetEffectReport, SetEnvelopeReport, SetPeriodicReport,
+        SetRampForceReport,
     },
 };
 use usb_device::{bus::UsbBus, UsbError};
 
-pub struct RacingWheel {
+struct RAMPool<const N: usize> {
+    buffer: [u8; N],
     n_effect_blocks: usize,
+}
+
+impl<const N: usize> RAMPool<N> {
+    fn new() -> Self {
+        Self {
+            buffer: [0; N],
+            n_effect_blocks: 0,
+        }
+    }
+}
+
+pub struct RacingWheel {
+    ram_pool: RAMPool<4096>,
 }
 
 impl RacingWheel {
     pub fn new() -> Self {
-        RacingWheel { n_effect_blocks: 0 }
+        RacingWheel {
+            ram_pool: RAMPool::new(),
+        }
     }
 }
 
@@ -30,17 +50,24 @@ impl HIDDeviceType for RacingWheel {
     ) -> Result<(), UsbError> {
         match report_id {
             PIDBlockLoadReport::ID => {
-                self.n_effect_blocks += 1;
+                self.ram_pool.n_effect_blocks += 1;
                 writer.accept(PIDBlockLoadReport {
-                    effect_block_index: self.n_effect_blocks as u8,
+                    effect_block_index: self.ram_pool.n_effect_blocks as u8,
                     block_load_status: BlockLoadStatus::Success,
                     ram_pool_available: 0x00FF,
                 })
             }
             PIDPoolReport::ID => writer.accept(PIDPoolReport {
-                ram_pool_size: 0x00FF,
+                ram_pool_size: self.ram_pool.buffer.len() as u16,
                 simultaneous_effects_max: 0x01,
-                device_managed_pool: true,
+                param_block_size_set_effect: todo!(),
+                param_block_size_set_envelope: todo!(),
+                param_block_size_set_condition: todo!(),
+                param_block_size_set_periodic: todo!(),
+                param_block_size_set_constant_force: todo!(),
+                param_block_size_set_ramp_force: todo!(),
+                param_block_size_set_custom_force: todo!(),
+                device_managed_pool: false,
                 shared_parameter_blocks: false,
             }),
             _ => Ok(()),
@@ -53,9 +80,56 @@ impl HIDDeviceType for RacingWheel {
         data: &[u8],
     ) -> Result<Option<bool>, UsbError> {
         match report_id {
-            CreateNewEffectReport::ID => Ok(Some(true)),
+            SetEffectReport::ID => {
+                let _ = SetEffectReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            SetEnvelopeReport::ID => {
+                let _ = SetEnvelopeReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            SetConditionReport::ID => {
+                let _ = SetConditionReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            SetPeriodicReport::ID => {
+                let _ = SetPeriodicReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            SetConstantForceReport::ID => {
+                let _ = SetConstantForceReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            SetRampForceReport::ID => {
+                let _ = SetRampForceReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            CustomForceDataReport::ID => {
+                let _ = CustomForceDataReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            EffectOperationReport::ID => {
+                let _ = EffectOperationReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
             PIDBlockFreeReport::ID => {
-                let _ = PIDBlockFreeReport::into_report(data);
+                let _ = PIDBlockFreeReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            PIDDeviceControl::ID => {
+                let _ = PIDDeviceControl::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            DeviceGainReport::ID => {
+                let _ = DeviceGainReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            SetCustomForceReport::ID => {
+                let _ = SetCustomForceReport::into_report(data).ok_or(UsbError::ParseError)?;
+                Ok(Some(true))
+            }
+            CreateNewEffectReport::ID => {
+                let _ = CreateNewEffectReport::into_report(data).ok_or(UsbError::ParseError)?;
                 Ok(Some(true))
             }
             _ => Ok(None),
