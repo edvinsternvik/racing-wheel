@@ -56,6 +56,9 @@ pub trait HIDReportRAM<const N: usize>
 where
     Self: HIDReport + Sized,
 {
+    // The size that the report takes up in RAM.
+    const RAM_SIZE: usize = N;
+
     // Deserialize the report from a slice of the RAM pool starting at the address of the report.
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self>;
 

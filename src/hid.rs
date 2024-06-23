@@ -2,7 +2,8 @@ use crate::hid_device::*;
 use core::convert::TryInto;
 use usb_device::{
     class_prelude::*,
-    control::{Request, RequestType},
+    control::{Recipient, Request, RequestType},
+    UsbDirection,
 };
 
 const USB_CLASS_HID: u8 = 0x03;
@@ -110,6 +111,12 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
 
     fn control_out(&mut self, xfer: ControlOut<B>) {
         let request = xfer.request();
+        if request.direction != UsbDirection::Out
+            || request.recipient != Recipient::Interface
+            || request.index != u8::from(self.interface_number) as u16
+        {
+            return;
+        }
 
         match (request.request_type, request.request) {
             (RequestType::Class, HIDRequest::SET_REPORT) => {
@@ -119,7 +126,7 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
                 let report_identifier = ReportID(report_type, report_id);
                 match self
                     .device
-                    .report_request_out(report_identifier, &[])
+                    .report_request_out(report_identifier, xfer.data())
                     .unwrap_or_default()
                 {
                     Some(true) => {
@@ -128,7 +135,9 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
                     Some(false) => {
                         let _ = xfer.reject();
                     }
-                    _ => {}
+                    None => {
+                        let _ = xfer.reject();
+                    }
                 };
             }
             _ => {}
@@ -137,6 +146,12 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
 
     fn control_in(&mut self, xfer: ControlIn<B>) {
         let request = xfer.request();
+        if request.direction != UsbDirection::In
+            || request.recipient != Recipient::Interface
+            || request.index != u8::from(self.interface_number) as u16
+        {
+            return;
+        }
 
         match (request.request_type, request.request) {
             (RequestType::Standard, Request::GET_DESCRIPTOR) => {
@@ -167,10 +182,9 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
         let mut buffer = [0; MAX_PACKET_SIZE];
         match self.endpoint_out.read(&mut buffer) {
             Ok(bytes_received) if bytes_received > 1 => {
-                let _ = self.device.report_request_out(
-                    ReportID(ReportType::Output, buffer[0]),
-                    &buffer[1..bytes_received],
-                );
+                let _ = self
+                    .device
+                    .report_request_out(ReportID(ReportType::Output, buffer[0]), &buffer);
             }
             _ => {}
         }

@@ -81,7 +81,7 @@ impl HIDReport for SetEffectReport {
 
 impl HIDReportOut for SetEffectReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Self::from_ram(&bytes[1..], *bytes.get(0)?)
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
@@ -193,7 +193,7 @@ impl HIDReport for SetEnvelopeReport {
 
 impl HIDReportOut for SetEnvelopeReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Self::from_ram(&bytes[1..], *bytes.get(0)?)
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
@@ -256,7 +256,7 @@ impl HIDReport for SetConditionReport {
 
 impl HIDReportOut for SetConditionReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Self::from_ram(&bytes[1..], *bytes.get(0)?)
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
@@ -312,7 +312,7 @@ impl HIDReport for SetPeriodicReport {
 
 impl HIDReportOut for SetPeriodicReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Self::from_ram(&bytes[1..], *bytes.get(0)?)
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
@@ -355,7 +355,7 @@ impl HIDReport for SetConstantForceReport {
 
 impl HIDReportOut for SetConstantForceReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Self::from_ram(&bytes[1..], *bytes.get(0)?)
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
@@ -388,7 +388,7 @@ impl HIDReport for SetRampForceReport {
 
 impl HIDReportOut for SetRampForceReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Self::from_ram(&bytes[1..], *bytes.get(0)?)
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
@@ -424,11 +424,36 @@ impl HIDReport for CustomForceDataReport {
 
 impl HIDReportOut for CustomForceDataReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
+    }
+}
+
+impl HIDReportRAM<14> for CustomForceDataReport {
+    fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
-            effect_block_index: *bytes.get(0)?,
-            custom_force_data_offset: u16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]),
-            custom_force_data: bytes.get(3..(3 + 12))?.try_into().unwrap_or_default(),
+            effect_block_index,
+            custom_force_data_offset: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
+            custom_force_data: ram.get(2..(2 + 12))?.try_into().unwrap_or_default(),
         })
+    }
+
+    fn to_ram(&self) -> [u8; 14] {
+        [
+            self.custom_force_data_offset.to_le_bytes()[0],
+            self.custom_force_data_offset.to_le_bytes()[1],
+            self.custom_force_data[0],
+            self.custom_force_data[1],
+            self.custom_force_data[2],
+            self.custom_force_data[3],
+            self.custom_force_data[4],
+            self.custom_force_data[5],
+            self.custom_force_data[6],
+            self.custom_force_data[7],
+            self.custom_force_data[8],
+            self.custom_force_data[9],
+            self.custom_force_data[10],
+            self.custom_force_data[11],
+        ]
     }
 }
 
@@ -445,8 +470,8 @@ impl HIDReport for DownloadForceSample {
 impl HIDReportOut for DownloadForceSample {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            axis_x: *bytes.get(0)?,
-            axis_y: *bytes.get(1)?,
+            axis_x: *bytes.get(1)?,
+            axis_y: *bytes.get(2)?,
         })
     }
 }
@@ -465,9 +490,9 @@ impl HIDReport for EffectOperationReport {
 impl HIDReportOut for EffectOperationReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            effect_block_index: *bytes.get(0)?,
-            effect_operation: EffectOperation::try_from(*bytes.get(1)?).ok()?,
-            loop_count: *bytes.get(2)?,
+            effect_block_index: *bytes.get(1)?,
+            effect_operation: EffectOperation::try_from(*bytes.get(2)?).ok()?,
+            loop_count: *bytes.get(3)?,
         })
     }
 }
@@ -503,7 +528,7 @@ impl HIDReport for PIDBlockFreeReport {
 impl HIDReportOut for PIDBlockFreeReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            effect_block_index: *bytes.get(0)?,
+            effect_block_index: *bytes.get(1)?,
         })
     }
 }
@@ -520,7 +545,7 @@ impl HIDReport for PIDDeviceControl {
 impl HIDReportOut for PIDDeviceControl {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            device_control: DeviceControl::try_from(*bytes.get(0)?).ok()?,
+            device_control: DeviceControl::try_from(*bytes.get(1)?).ok()?,
         })
     }
 }
@@ -562,7 +587,7 @@ impl HIDReport for DeviceGainReport {
 impl HIDReportOut for DeviceGainReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            device_gain: *bytes.get(0)?,
+            device_gain: *bytes.get(1)?,
         })
     }
 }
@@ -580,11 +605,25 @@ impl HIDReport for SetCustomForceReport {
 
 impl HIDReportOut for SetCustomForceReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
+        Self::from_ram(&bytes[2..], *bytes.get(1)?)
+    }
+}
+
+impl HIDReportRAM<3> for SetCustomForceReport {
+    fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
-            effect_block_index: *bytes.get(0)?,
-            sample_count: *bytes.get(1)?,
-            sample_period: u16::from_le_bytes([*bytes.get(2)?, *bytes.get(3)?]),
+            effect_block_index,
+            sample_count: *ram.get(0)?,
+            sample_period: u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
         })
+    }
+
+    fn to_ram(&self) -> [u8; 3] {
+        [
+            self.sample_count,
+            self.sample_period.to_le_bytes()[0],
+            self.sample_period.to_le_bytes()[1],
+        ]
     }
 }
 
@@ -602,9 +641,9 @@ impl HIDReport for PIDPoolMoveReport {
 impl HIDReportOut for PIDPoolMoveReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            move_source: u16::from_le_bytes([*bytes.get(0)?, *bytes.get(1)?]),
-            move_destination: u16::from_le_bytes([*bytes.get(2)?, *bytes.get(3)?]),
-            move_length: u16::from_le_bytes([*bytes.get(4)?, *bytes.get(5)?]),
+            move_source: u16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]),
+            move_destination: u16::from_le_bytes([*bytes.get(3)?, *bytes.get(4)?]),
+            move_length: u16::from_le_bytes([*bytes.get(5)?, *bytes.get(6)?]),
         })
     }
 }
@@ -622,8 +661,8 @@ impl HIDReport for CreateNewEffectReport {
 impl HIDReportOut for CreateNewEffectReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            effect_type: EffectType::try_from(*bytes.get(0)?).ok()?,
-            byte_count: u16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]),
+            effect_type: EffectType::try_from(*bytes.get(1)?).ok()?,
+            byte_count: u16::from_le_bytes([*bytes.get(2)?, *bytes.get(3)?]),
         })
     }
 }
@@ -654,8 +693,8 @@ impl HIDReportIn<5> for PIDBlockLoadReport {
 #[derive(Clone, Copy)]
 pub enum BlockLoadStatus {
     Success = 0x01,
-    _Full = 0x02,
-    _Error = 0x03,
+    Full = 0x02,
+    Error = 0x03,
 }
 
 // PID Pool Report
@@ -709,5 +748,5 @@ fn bitflag(flags: u8, i: u8) -> bool {
 }
 
 fn bits(byte: u8, start: u8, n_bits: u8) -> u8 {
-    (byte << i32::max(0_i32, 8_i32 - start as i32 - n_bits as i32)) >> start
+    (byte << i32::max(0_i32, 8_i32 - start as i32 - n_bits as i32)) >> (8 - n_bits)
 }
