@@ -16,7 +16,7 @@ pub trait HIDDeviceType {
         &mut self,
         report_id: ReportID,
         data: &[u8],
-    ) -> Result<Option<bool>, UsbError> {
+    ) -> Result<Option<bool>, ()> {
         let (_, _) = (report_id, data);
         Ok(None)
     }

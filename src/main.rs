@@ -6,6 +6,8 @@ mod hid;
 mod hid_device;
 mod racing_wheel;
 mod reports;
+mod ram_pool;
+mod misc;
 
 use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
