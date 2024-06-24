@@ -20,7 +20,7 @@ const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
 
 pub struct RacingWheel {
     ram_pool: RAMPool<RAM_POOL_SIZE, MAX_EFFECTS>,
-    next_effect_type: Option<EffectType>,
+    next_effect: Option<CreateNewEffectReport>,
     running_effects: FixedSet<u8, MAX_SIMULTANEOUS_EFFECTS>,
     device_gain: u8,
     joystick_report: RacingWheelReport,
@@ -31,7 +31,7 @@ impl RacingWheel {
     pub fn new() -> Self {
         RacingWheel {
             ram_pool: RAMPool::new(),
-            next_effect_type: None,
+            next_effect: None,
             running_effects: FixedSet::new(),
             device_gain: 0,
             joystick_report: RacingWheelReport::default(),
@@ -56,10 +56,10 @@ impl HIDDeviceType for RacingWheel {
     ) -> Result<(), UsbError> {
         match report_id {
             PIDBlockLoadReport::ID => {
-                if let Some(effect_type) = self.next_effect_type {
-                    self.next_effect_type = None;
+                if let Some(next_effect) = self.next_effect {
+                    self.next_effect = None;
 
-                    if let Some(index) = self.ram_pool.new_effect(effect_type) {
+                    if let Some(index) = self.ram_pool.new_effect(next_effect.effect_type) {
                         writer.accept(PIDBlockLoadReport {
                             effect_block_index: index as u8,
                             block_load_status: BlockLoadStatus::Success,
@@ -167,12 +167,7 @@ impl HIDDeviceType for RacingWheel {
                 Ok(Some(true))
             }
             CustomForceDataReport::ID => {
-                let report = CustomForceDataReport::into_report(data).ok_or(())?;
-                let address = self
-                    .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?[0];
-
-                self.ram_pool.write_report(&report, address)?;
+                let _ = CustomForceDataReport::into_report(data).ok_or(())?;
                 Ok(Some(true))
             }
             EffectOperationReport::ID => {
@@ -220,7 +215,12 @@ impl HIDDeviceType for RacingWheel {
                 Ok(Some(true))
             }
             SetCustomForceReport::ID => {
-                let _ = SetCustomForceReport::into_report(data).ok_or(())?;
+                let report = SetCustomForceReport::into_report(data).ok_or(())?;
+                let address = self
+                    .ram_pool
+                    .get_type_specific_block_offsets(report.effect_block_index)?[0];
+
+                self.ram_pool.write_report(&report, address)?;
                 Ok(Some(true))
             }
             PIDPoolMoveReport::ID => {
@@ -229,7 +229,7 @@ impl HIDDeviceType for RacingWheel {
             }
             CreateNewEffectReport::ID => {
                 let report = CreateNewEffectReport::into_report(data).ok_or(())?;
-                self.next_effect_type = Some(report.effect_type);
+                self.next_effect = Some(report);
                 Ok(Some(true))
             }
             _ => Ok(None),

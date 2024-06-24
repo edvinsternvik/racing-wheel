@@ -145,7 +145,7 @@ impl HIDReportRAM<18> for SetEffectReport {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum EffectType {
     ConstantForce = 1,
     Ramp = 2,
@@ -420,6 +420,7 @@ impl HIDReportRAM<4> for SetRampForceReport {
 pub struct CustomForceDataReport {
     pub effect_block_index: u8,
     pub custom_force_data_offset: u16,
+    pub byte_count: u8,
     pub custom_force_data: [u8; 12],
 }
 
@@ -433,19 +434,21 @@ impl HIDReportOut for CustomForceDataReport {
     }
 }
 
-impl HIDReportRAM<14> for CustomForceDataReport {
+impl HIDReportRAM<15> for CustomForceDataReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
             custom_force_data_offset: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
-            custom_force_data: ram.get(2..(2 + 12))?.try_into().unwrap_or_default(),
+            byte_count: *ram.get(2)?,
+            custom_force_data: ram.get(3..(3 + 12))?.try_into().unwrap_or_default(),
         })
     }
 
-    fn to_ram(&self) -> [u8; 14] {
+    fn to_ram(&self) -> [u8; 15] {
         [
             self.custom_force_data_offset.to_le_bytes()[0],
             self.custom_force_data_offset.to_le_bytes()[1],
+            self.byte_count,
             self.custom_force_data[0],
             self.custom_force_data[1],
             self.custom_force_data[2],
@@ -464,8 +467,8 @@ impl HIDReportRAM<14> for CustomForceDataReport {
 
 // Download Force Sample
 pub struct DownloadForceSample {
-    pub axis_x: u8,
-    pub axis_y: u8,
+    pub steering: u8,
+    pub throttle: u8,
 }
 
 impl HIDReport for DownloadForceSample {
@@ -475,8 +478,8 @@ impl HIDReport for DownloadForceSample {
 impl HIDReportOut for DownloadForceSample {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            axis_x: *bytes.get(1)?,
-            axis_y: *bytes.get(2)?,
+            steering: *bytes.get(1)?,
+            throttle: *bytes.get(2)?,
         })
     }
 }
@@ -600,8 +603,8 @@ impl HIDReportOut for DeviceGainReport {
 // Set Custom Force Report
 pub struct SetCustomForceReport {
     pub effect_block_index: u8,
-    pub sample_count: u8,
-    pub sample_period: u16,
+    pub custom_force_data_offset: u16,
+    pub sample_count: u16,
 }
 
 impl HIDReport for SetCustomForceReport {
@@ -614,20 +617,21 @@ impl HIDReportOut for SetCustomForceReport {
     }
 }
 
-impl HIDReportRAM<3> for SetCustomForceReport {
+impl HIDReportRAM<4> for SetCustomForceReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            sample_count: *ram.get(0)?,
-            sample_period: u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
+            custom_force_data_offset: u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
+            sample_count: u16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]),
         })
     }
 
-    fn to_ram(&self) -> [u8; 3] {
+    fn to_ram(&self) -> [u8; 4] {
         [
-            self.sample_count,
-            self.sample_period.to_le_bytes()[0],
-            self.sample_period.to_le_bytes()[1],
+            self.custom_force_data_offset.to_le_bytes()[0],
+            self.custom_force_data_offset.to_le_bytes()[1],
+            self.sample_count.to_le_bytes()[0],
+            self.sample_count.to_le_bytes()[1],
         ]
     }
 }
@@ -654,6 +658,7 @@ impl HIDReportOut for PIDPoolMoveReport {
 }
 
 // Create New Effect Report
+#[derive(Clone, Copy)]
 pub struct CreateNewEffectReport {
     pub effect_type: EffectType,
     pub byte_count: u16,
@@ -736,7 +741,11 @@ impl HIDReportIn<12> for PIDPoolReport {
             self.param_block_size_set_constant_force,
             self.param_block_size_set_ramp_force,
             self.param_block_size_set_custom_force,
-            bitflags(&[self.device_managed_pool, self.shared_parameter_blocks, self.isochronous_enable]),
+            bitflags(&[
+                self.device_managed_pool,
+                self.shared_parameter_blocks,
+                self.isochronous_enable,
+            ]),
         ]
     }
 }
