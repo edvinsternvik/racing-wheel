@@ -3,20 +3,18 @@ use crate::{
     reports::{EffectType, SetEffectReport},
 };
 
-const MAX_EFFECT_REPORTS: usize = 16;
-
-pub struct RAMPool<const N: usize> {
+pub struct RAMPool<const N: usize, const MAX_EFFECTS: usize> {
     buffer: [u8; N],
     allocated: usize,
-    effects: [Option<EffectType>; MAX_EFFECT_REPORTS],
+    effects: [Option<EffectType>; MAX_EFFECTS],
 }
 
-impl<const N: usize> RAMPool<N> {
+impl<const N: usize, const MAX_EFFECTS: usize> RAMPool<N, MAX_EFFECTS> {
     pub fn new() -> Self {
         Self {
             buffer: [0; N],
-            allocated: MAX_EFFECT_REPORTS * SetEffectReport::RAM_SIZE,
-            effects: [None; MAX_EFFECT_REPORTS],
+            allocated: MAX_EFFECTS * SetEffectReport::RAM_SIZE,
+            effects: [None; MAX_EFFECTS],
         }
     }
 

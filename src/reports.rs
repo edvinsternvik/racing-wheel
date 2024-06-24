@@ -4,32 +4,33 @@ use crate::{
 };
 use core::convert::{TryFrom, TryInto};
 
-// Joystick report
+// Racing wheel report
 #[derive(Default, Clone)]
-pub struct JoystickReport {
+pub struct RacingWheelReport {
     pub buttons: [bool; 8],
-    pub joystick_x: u16,
-    pub joystick_y: u16,
+    pub steering: i16,
+    pub throttle: i16,
 }
 
-impl HIDReport for JoystickReport {
+impl HIDReport for RacingWheelReport {
     const ID: ReportID = ReportID(ReportType::Input, 0x01);
 }
 
-impl HIDReportIn<6> for JoystickReport {
+impl HIDReportIn<6> for RacingWheelReport {
     fn report_bytes(&self) -> [u8; 6] {
         [
             Self::ID.1,
             bitflags(&self.buttons),
-            self.joystick_x.to_le_bytes()[0],
-            self.joystick_x.to_le_bytes()[1],
-            self.joystick_y.to_le_bytes()[0],
-            self.joystick_y.to_le_bytes()[1],
+            self.steering.to_le_bytes()[0],
+            self.steering.to_le_bytes()[1],
+            self.throttle.to_le_bytes()[0],
+            self.throttle.to_le_bytes()[1],
         ]
     }
 }
 
 // PID State Report
+#[derive(Default, Clone)]
 pub struct PIDStateReport {
     pub device_paused: bool,
     pub actuators_enabled: bool,

@@ -6,23 +6,25 @@ use crate::{
     ram_pool::{effect_address, RAMPool},
     reports::{
         BlockLoadStatus, CreateNewEffectReport, CustomForceDataReport, DeviceControl,
-        DeviceGainReport, EffectOperation, EffectOperationReport, EffectType, JoystickReport,
-        PIDBlockFreeReport, PIDBlockLoadReport, PIDDeviceControl, PIDPoolMoveReport, PIDPoolReport,
-        PIDStateReport, SetConditionReport, SetConstantForceReport, SetCustomForceReport,
+        DeviceGainReport, EffectOperation, EffectOperationReport, EffectType, PIDBlockFreeReport,
+        PIDBlockLoadReport, PIDDeviceControl, PIDPoolMoveReport, PIDPoolReport, PIDStateReport,
+        RacingWheelReport, SetConditionReport, SetConstantForceReport, SetCustomForceReport,
         SetEffectReport, SetEnvelopeReport, SetPeriodicReport, SetRampForceReport,
     },
 };
 use usb_device::{bus::UsbBus, UsbError};
 
+const RAM_POOL_SIZE: usize = 16384;
+const MAX_EFFECTS: usize = 16;
 const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
 
 pub struct RacingWheel {
-    ram_pool: RAMPool<4096>,
+    ram_pool: RAMPool<RAM_POOL_SIZE, MAX_EFFECTS>,
     next_effect_type: Option<EffectType>,
     running_effects: FixedSet<u8, MAX_SIMULTANEOUS_EFFECTS>,
-    actuators_enabled: bool,
-    paused: bool,
     device_gain: u8,
+    joystick_report: RacingWheelReport,
+    pid_state_report: PIDStateReport,
 }
 
 impl RacingWheel {
@@ -31,10 +33,14 @@ impl RacingWheel {
             ram_pool: RAMPool::new(),
             next_effect_type: None,
             running_effects: FixedSet::new(),
-            actuators_enabled: false,
-            paused: false,
             device_gain: 0,
+            joystick_report: RacingWheelReport::default(),
+            pid_state_report: PIDStateReport::default(),
         }
+    }
+
+    pub fn joystick_report_mut(&mut self) -> &mut RacingWheelReport {
+        &mut self.joystick_report
     }
 }
 
@@ -193,12 +199,16 @@ impl HIDDeviceType for RacingWheel {
             PIDDeviceControl::ID => {
                 let report = PIDDeviceControl::into_report(data).ok_or(())?;
                 match report.device_control {
-                    DeviceControl::EnableActuators => self.actuators_enabled = true,
-                    DeviceControl::DisableActuators => self.actuators_enabled = false,
-                    DeviceControl::StopAllEffects => {}
-                    DeviceControl::DeviceReset => {}
-                    DeviceControl::DevicePause => self.paused = true,
-                    DeviceControl::DeviceContinue => self.paused = false,
+                    DeviceControl::EnableActuators => {
+                        self.pid_state_report.actuators_enabled = true
+                    }
+                    DeviceControl::DisableActuators => {
+                        self.pid_state_report.actuators_enabled = false
+                    }
+                    DeviceControl::StopAllEffects => self.running_effects = FixedSet::new(),
+                    DeviceControl::DeviceReset => *self = Self::new(),
+                    DeviceControl::DevicePause => self.pid_state_report.device_paused = true,
+                    DeviceControl::DeviceContinue => self.pid_state_report.device_paused = false,
                 }
 
                 Ok(Some(true))
@@ -226,21 +236,8 @@ impl HIDDeviceType for RacingWheel {
     }
 
     fn send_input_reports<B: UsbBus>(&mut self, writer: ReportWriter<B>) -> Result<(), UsbError> {
-        writer.write_report(JoystickReport {
-            buttons: [false; 8],
-            joystick_x: 0,
-            joystick_y: 0,
-        })?;
-
-        writer.write_report(PIDStateReport {
-            device_paused: self.paused,
-            actuators_enabled: self.actuators_enabled,
-            safety_switch: false,
-            actuators_override_switch: false,
-            actuator_power: false,
-            effect_playing: self.running_effects.size() > 0,
-            effect_block_index: 0,
-        })?;
+        writer.write_report(self.joystick_report.clone())?;
+        writer.write_report(self.pid_state_report.clone())?;
 
         Ok(())
     }

@@ -32,6 +32,10 @@ impl<'a, D: HIDDeviceType, B: UsbBus> HID<'a, D, B> {
             .device
             .send_input_reports(ReportWriter(&self.endpoint_in));
     }
+
+    pub fn get_device_mut(&mut self) -> &mut D {
+        &mut self.device
+    }
 }
 
 pub struct GetReportInWriter<'a, 'p, 'r, B: UsbBus>(ControlIn<'a, 'p, 'r, B>);
@@ -135,9 +139,7 @@ impl<D: HIDDeviceType, B: UsbBus> UsbClass<B> for HID<'_, D, B> {
                     Some(false) => {
                         let _ = xfer.reject();
                     }
-                    None => {
-                        let _ = xfer.reject();
-                    }
+                    None => {}
                 };
             }
             _ => {}

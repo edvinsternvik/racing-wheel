@@ -4,10 +4,11 @@
 mod descriptor;
 mod hid;
 mod hid_device;
-mod racing_wheel;
-mod reports;
-mod ram_pool;
 mod misc;
+mod racing_wheel;
+mod ram_pool;
+mod reports;
+mod simple_wheel;
 
 use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
@@ -81,11 +82,11 @@ fn main() -> ! {
             let x_raw: u16 = adc.read(&mut analog_x_pin).unwrap();
             let y_raw: u16 = adc.read(&mut analog_y_pin).unwrap();
 
-            let _x = (-(x_raw as i32 / 16) + 127) as i8;
-            let _y = -((y_raw as i32 / 16) - 127) as i8;
-            let _buttons: u8 = 0
-                + if button_a.is_high() { 1 << 4 } else { 0 }
-                + if button_b.is_high() { 1 << 5 } else { 0 };
+            let joystick = racing_wheel.get_device_mut().joystick_report_mut();
+            joystick.throttle = (-(x_raw as i32) + 2047) as i16 * 16;
+            joystick.steering = ((y_raw as i32) - 2048) as i16 * 16;
+            joystick.buttons[0] = button_a.is_high();
+            joystick.buttons[1] = button_b.is_high();
 
             racing_wheel.send_input_reports();
         }
