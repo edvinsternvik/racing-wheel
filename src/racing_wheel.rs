@@ -3,23 +3,17 @@ use crate::{
     hid::{GetReportInWriter, ReportWriter},
     hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
     misc::FixedSet,
-    ram_pool::{effect_address, RAMPool},
-    reports::{
-        BlockLoadStatus, CreateNewEffectReport, CustomForceDataReport, DeviceControl,
-        DeviceGainReport, EffectOperation, EffectOperationReport, EffectType, PIDBlockFreeReport,
-        PIDBlockLoadReport, PIDDeviceControl, PIDPoolMoveReport, PIDPoolReport, PIDStateReport,
-        RacingWheelReport, SetConditionReport, SetConstantForceReport, SetCustomForceReport,
-        SetEffectReport, SetEnvelopeReport, SetPeriodicReport, SetRampForceReport,
-    },
+    ram_pool::{EffectParameter, RAMPool},
+    reports::*,
 };
 use usb_device::{bus::UsbBus, UsbError};
 
-const RAM_POOL_SIZE: usize = 16384;
+const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
 const MAX_EFFECTS: usize = 16;
 const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
 
 pub struct RacingWheel {
-    ram_pool: RAMPool<RAM_POOL_SIZE, MAX_EFFECTS>,
+    ram_pool: RAMPool<MAX_EFFECTS, CUSTOM_DATA_BUFFER_SIZE>,
     next_effect: Option<CreateNewEffectReport>,
     running_effects: FixedSet<u8, MAX_SIMULTANEOUS_EFFECTS>,
     device_gain: u8,
@@ -56,10 +50,10 @@ impl HIDDeviceType for RacingWheel {
     ) -> Result<(), UsbError> {
         match report_id {
             PIDBlockLoadReport::ID => {
-                if let Some(next_effect) = self.next_effect {
+                if let Some(_) = self.next_effect {
                     self.next_effect = None;
 
-                    if let Some(index) = self.ram_pool.new_effect(next_effect.effect_type) {
+                    if let Some(index) = self.ram_pool.new_effect() {
                         writer.accept(PIDBlockLoadReport {
                             effect_block_index: index as u8,
                             block_load_status: BlockLoadStatus::Success,
@@ -102,68 +96,67 @@ impl HIDDeviceType for RacingWheel {
     fn report_request_out(&mut self, report_id: ReportID, data: &[u8]) -> Result<Option<bool>, ()> {
         match report_id {
             SetEffectReport::ID => {
-                let mut report = SetEffectReport::into_report(data).ok_or(())?;
-                let parameter_ram_sizes = get_parameter_ram_sizes(report.effect_type);
-                let address = self
+                let report = SetEffectReport::into_report(data).ok_or(())?;
+                let effect = self
                     .ram_pool
-                    .allocate(parameter_ram_sizes.iter().sum())
-                    .map_err(|_| ())?;
+                    .get_effect_mut(report.effect_block_index)
+                    .ok_or(())?;
+                effect.effect_report = Some(report);
 
-                report.type_specific_block_offset_instance_1 = address as u16;
-                report.type_specific_block_offset_instance_2 =
-                    (address + parameter_ram_sizes[0]) as u16;
-
-                self.ram_pool
-                    .write_report(&report, effect_address(report.effect_block_index))
-                    .map_err(|_| ())?;
                 Ok(Some(true))
             }
             SetEnvelopeReport::ID => {
                 let report = SetEnvelopeReport::into_report(data).ok_or(())?;
-                let address = self
+                let effect = self
                     .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?[1];
+                    .get_effect_mut(report.effect_block_index)
+                    .ok_or(())?;
+                effect.parameter_2 = Some(EffectParameter::Envelope(report));
 
-                self.ram_pool.write_report(&report, address)?;
                 Ok(Some(true))
             }
             SetConditionReport::ID => {
                 let report = SetConditionReport::into_report(data).ok_or(())?;
-                let addresses = self
+                let effect = self
                     .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?;
-                let address = *addresses
-                    .get(report.parameter_block_offset as usize)
+                    .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-
-                self.ram_pool.write_report(&report, address)?;
+                if report.parameter_block_offset == 0 {
+                    effect.parameter_1 = Some(EffectParameter::Condition(report));
+                }
+                else if report.parameter_block_offset == 1 {
+                    effect.parameter_2 = Some(EffectParameter::Condition(report));
+                }
                 Ok(Some(true))
             }
             SetPeriodicReport::ID => {
                 let report = SetPeriodicReport::into_report(data).ok_or(())?;
-                let address = self
+                let effect = self
                     .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?[0];
+                    .get_effect_mut(report.effect_block_index)
+                    .ok_or(())?;
+                effect.parameter_1 = Some(EffectParameter::Periodic(report));
 
-                self.ram_pool.write_report(&report, address)?;
                 Ok(Some(true))
             }
             SetConstantForceReport::ID => {
                 let report = SetConstantForceReport::into_report(data).ok_or(())?;
-                let address = self
+                let effect = self
                     .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?[0];
+                    .get_effect_mut(report.effect_block_index)
+                    .ok_or(())?;
+                effect.parameter_1 = Some(EffectParameter::ConstantForce(report));
 
-                self.ram_pool.write_report(&report, address)?;
                 Ok(Some(true))
             }
             SetRampForceReport::ID => {
                 let report = SetRampForceReport::into_report(data).ok_or(())?;
-                let address = self
+                let effect = self
                     .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?[0];
+                    .get_effect_mut(report.effect_block_index)
+                    .ok_or(())?;
+                effect.parameter_1 = Some(EffectParameter::RampForce(report));
 
-                self.ram_pool.write_report(&report, address)?;
                 Ok(Some(true))
             }
             CustomForceDataReport::ID => {
@@ -216,11 +209,12 @@ impl HIDDeviceType for RacingWheel {
             }
             SetCustomForceReport::ID => {
                 let report = SetCustomForceReport::into_report(data).ok_or(())?;
-                let address = self
+                let effect = self
                     .ram_pool
-                    .get_type_specific_block_offsets(report.effect_block_index)?[0];
+                    .get_effect_mut(report.effect_block_index)
+                    .ok_or(())?;
+                effect.parameter_1 = Some(EffectParameter::CustomForce(report));
 
-                self.ram_pool.write_report(&report, address)?;
                 Ok(Some(true))
             }
             PIDPoolMoveReport::ID => {
@@ -241,25 +235,5 @@ impl HIDDeviceType for RacingWheel {
         writer.write_report(self.pid_state_report.clone())?;
 
         Ok(())
-    }
-}
-
-fn get_parameter_ram_sizes(effect_type: EffectType) -> [usize; 2] {
-    match effect_type {
-        EffectType::ConstantForce => [
-            SetConstantForceReport::RAM_SIZE,
-            SetEnvelopeReport::RAM_SIZE,
-        ],
-        EffectType::Ramp => [SetRampForceReport::RAM_SIZE, SetEnvelopeReport::RAM_SIZE],
-        EffectType::Square => [SetPeriodicReport::RAM_SIZE, SetEnvelopeReport::RAM_SIZE],
-        EffectType::Sine => [SetPeriodicReport::RAM_SIZE, SetEnvelopeReport::RAM_SIZE],
-        EffectType::Triangle => [SetPeriodicReport::RAM_SIZE, SetEnvelopeReport::RAM_SIZE],
-        EffectType::SawtoothUp => [SetPeriodicReport::RAM_SIZE, SetEnvelopeReport::RAM_SIZE],
-        EffectType::SawtoothDown => [SetPeriodicReport::RAM_SIZE, SetEnvelopeReport::RAM_SIZE],
-        EffectType::Spring => [SetConditionReport::RAM_SIZE, SetConditionReport::RAM_SIZE],
-        EffectType::Damper => [SetConditionReport::RAM_SIZE, SetConditionReport::RAM_SIZE],
-        EffectType::Inertia => [SetConditionReport::RAM_SIZE, SetConditionReport::RAM_SIZE],
-        EffectType::Friction => [SetConditionReport::RAM_SIZE, SetConditionReport::RAM_SIZE],
-        EffectType::CustomForceData => [SetCustomForceReport::RAM_SIZE, 0],
     }
 }

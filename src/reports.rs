@@ -62,6 +62,7 @@ impl HIDReportIn<3> for PIDStateReport {
 }
 
 // Set Effect Report
+#[derive(Clone, Copy)]
 pub struct SetEffectReport {
     pub effect_block_index: u8,
     pub effect_type: EffectType,
@@ -184,6 +185,7 @@ impl TryFrom<u8> for EffectType {
 }
 
 // Set Envelope Report
+#[derive(Clone, Copy)]
 pub struct SetEnvelopeReport {
     pub effect_block_index: u8,
     pub attack_level: u16,
@@ -242,6 +244,7 @@ impl HIDReportRAM<12> for SetEnvelopeReport {
 }
 
 // Set Condition Report
+#[derive(Clone, Copy)]
 pub struct SetConditionReport {
     pub effect_block_index: u8,
     pub parameter_block_offset: u8,
@@ -303,6 +306,7 @@ impl HIDReportRAM<13> for SetConditionReport {
 }
 
 // Set Periodic Report
+#[derive(Clone, Copy)]
 pub struct SetPeriodicReport {
     pub effect_block_index: u8,
     pub magnitude: u16,
@@ -349,6 +353,7 @@ impl HIDReportRAM<10> for SetPeriodicReport {
 }
 
 // Set Constant Force Report
+#[derive(Clone, Copy)]
 pub struct SetConstantForceReport {
     pub effect_block_index: u8,
     pub magnitude: u16,
@@ -381,6 +386,7 @@ impl HIDReportRAM<2> for SetConstantForceReport {
 }
 
 // Set Ramp Force Report
+#[derive(Clone, Copy)]
 pub struct SetRampForceReport {
     pub effect_block_index: u8,
     pub ramp_start: u16,
@@ -417,6 +423,7 @@ impl HIDReportRAM<4> for SetRampForceReport {
 }
 
 // Custom Force Data Report
+#[derive(Clone, Copy)]
 pub struct CustomForceDataReport {
     pub effect_block_index: u8,
     pub custom_force_data_offset: u16,
@@ -466,6 +473,7 @@ impl HIDReportRAM<15> for CustomForceDataReport {
 }
 
 // Download Force Sample
+#[derive(Clone, Copy)]
 pub struct DownloadForceSample {
     pub steering: u8,
     pub throttle: u8,
@@ -485,6 +493,7 @@ impl HIDReportOut for DownloadForceSample {
 }
 
 // Effect Operation Report
+#[derive(Clone, Copy)]
 pub struct EffectOperationReport {
     pub effect_block_index: u8,
     pub effect_operation: EffectOperation,
@@ -505,6 +514,7 @@ impl HIDReportOut for EffectOperationReport {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum EffectOperation {
     EffectStart = 1,
     EffectStartSolo = 2,
@@ -525,6 +535,7 @@ impl TryFrom<u8> for EffectOperation {
 }
 
 // PID Block Free Report
+#[derive(Clone, Copy)]
 pub struct PIDBlockFreeReport {
     pub effect_block_index: u8,
 }
@@ -542,6 +553,7 @@ impl HIDReportOut for PIDBlockFreeReport {
 }
 
 // PID Device Control
+#[derive(Clone, Copy)]
 pub struct PIDDeviceControl {
     pub device_control: DeviceControl,
 }
@@ -558,6 +570,7 @@ impl HIDReportOut for PIDDeviceControl {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum DeviceControl {
     EnableActuators = 1,
     DisableActuators = 2,
@@ -584,6 +597,7 @@ impl TryFrom<u8> for DeviceControl {
 }
 
 // Device Gain Report
+#[derive(Clone, Copy)]
 pub struct DeviceGainReport {
     pub device_gain: u8,
 }
@@ -601,6 +615,7 @@ impl HIDReportOut for DeviceGainReport {
 }
 
 // Set Custom Force Report
+#[derive(Clone, Copy)]
 pub struct SetCustomForceReport {
     pub effect_block_index: u8,
     pub custom_force_data_offset: u16,
@@ -637,6 +652,7 @@ impl HIDReportRAM<4> for SetCustomForceReport {
 }
 
 // PID Pool Move Report
+#[derive(Clone, Copy)]
 pub struct PIDPoolMoveReport {
     pub move_source: u16,
     pub move_destination: u16,
@@ -678,6 +694,7 @@ impl HIDReportOut for CreateNewEffectReport {
 }
 
 // PID Block Load Report
+#[derive(Clone, Copy)]
 pub struct PIDBlockLoadReport {
     pub effect_block_index: u8,
     pub block_load_status: BlockLoadStatus,
@@ -708,6 +725,7 @@ pub enum BlockLoadStatus {
 }
 
 // PID Pool Report
+#[derive(Clone, Copy)]
 pub struct PIDPoolReport {
     pub ram_pool_size: u16,
     pub simultaneous_effects_max: u8,
