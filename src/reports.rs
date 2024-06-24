@@ -715,6 +715,7 @@ pub struct PIDPoolReport {
     pub param_block_size_set_custom_force: u8,
     pub device_managed_pool: bool,
     pub shared_parameter_blocks: bool,
+    pub isochronous_enable: bool,
 }
 
 impl HIDReport for PIDPoolReport {
@@ -735,7 +736,7 @@ impl HIDReportIn<12> for PIDPoolReport {
             self.param_block_size_set_constant_force,
             self.param_block_size_set_ramp_force,
             self.param_block_size_set_custom_force,
-            bitflags(&[self.device_managed_pool, self.shared_parameter_blocks]),
+            bitflags(&[self.device_managed_pool, self.shared_parameter_blocks, self.isochronous_enable]),
         ]
     }
 }

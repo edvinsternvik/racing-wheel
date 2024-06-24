@@ -663,14 +663,15 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0xC0,              //     End Collection
     0x09, 0xA9,        //     Usage (Device Managed Pool)
     0x09, 0xAA,        //     Usage (Shared Parameter Blocks)
+    0x09, 0x67,        //     Usage (Isochronous Custom Force Enable)
     0x75, 0x01,        //     Report Size (1)
-    0x95, 0x02,        //     Report Count (2)
+    0x95, 0x02,        //     Report Count (3)
     0x15, 0x00,        //     Logical Minimum (0)
     0x25, 0x01,        //     Logical Maximum (1)
     0x35, 0x00,        //     Physical Minimum (0)
     0x45, 0x01,        //     Physical Maximum (1)
     0xB1, 0x02,        //     Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0x75, 0x06,        //     Report Size (6)
+    0x75, 0x05,        //     Report Size (5)
     0x95, 0x01,        //     Report Count (1)
     0xB1, 0x03,        //     Feature (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
     0xC0,              //   End Collection

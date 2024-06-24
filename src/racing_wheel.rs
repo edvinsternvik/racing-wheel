@@ -93,6 +93,7 @@ impl HIDDeviceType for RacingWheel {
                 param_block_size_set_custom_force: SetCustomForceReport::RAM_SIZE as u8,
                 device_managed_pool: true,
                 shared_parameter_blocks: false,
+                isochronous_enable: true,
             }),
             _ => Ok(()),
         }
