@@ -33,6 +33,10 @@ impl<'a, D: HIDDeviceType, B: UsbBus> HID<'a, D, B> {
             .send_input_reports(ReportWriter(&self.endpoint_in));
     }
 
+    pub fn get_device(&self) -> &D {
+        &self.device
+    }
+
     pub fn get_device_mut(&mut self) -> &mut D {
         &mut self.device
     }

@@ -17,8 +17,9 @@ pub struct RacingWheel {
     next_effect: Option<CreateNewEffectReport>,
     running_effects: FixedSet<u8, MAX_SIMULTANEOUS_EFFECTS>,
     device_gain: u8,
-    joystick_report: RacingWheelReport,
+    racing_wheel_report: RacingWheelReport,
     pid_state_report: PIDStateReport,
+    steering_prev: i16,
 }
 
 impl RacingWheel {
@@ -28,13 +29,72 @@ impl RacingWheel {
             next_effect: None,
             running_effects: FixedSet::new(),
             device_gain: 0,
-            joystick_report: RacingWheelReport::default(),
+            racing_wheel_report: RacingWheelReport::default(),
             pid_state_report: PIDStateReport::default(),
+            steering_prev: 0,
         }
     }
 
-    pub fn joystick_report_mut(&mut self) -> &mut RacingWheelReport {
-        &mut self.joystick_report
+    pub fn set_steering(&mut self, steering: i16) {
+        self.steering_prev = self.racing_wheel_report.steering;
+        self.racing_wheel_report.steering = steering;
+    }
+
+    pub fn set_throttle(&mut self, throttle: i16) {
+        self.racing_wheel_report.throttle = throttle;
+    }
+
+    pub fn set_buttons(&mut self, buttons: [bool; 8]) {
+        self.racing_wheel_report.buttons = buttons;
+    }
+
+    pub fn get_force_feedback(&self) -> i32 {
+        use EffectParameter::*;
+        let steering_velocity = (self.racing_wheel_report.steering - self.steering_prev) as i32;
+
+        let mut total = 0;
+        for effect_block_index in self.running_effects.iter() {
+            let effect = self.ram_pool.get_effect(*effect_block_index);
+
+            if let Some(effect) = effect {
+                let res = match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
+                    (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => {
+                        constant_ffb(&e, &p1, &p2)
+                    }
+                    (Some(e), Some(Condition(p1)), Some(Condition(p2))) => {
+                        damper_ffb(&e, &p1, &p2, steering_velocity)
+                    }
+                    _ => 0,
+                };
+                total += res;
+            }
+        }
+
+        total
+    }
+}
+
+fn constant_ffb(
+    _effect: &SetEffectReport,
+    constant_force: &SetConstantForceReport,
+    _envelope: &SetEnvelopeReport,
+) -> i32 {
+    //let gain = (effect.gain as i16) * (i16::MAX / u8::MAX as i16);
+    let magnitude = constant_force.magnitude;
+    magnitude as i32
+}
+
+fn damper_ffb(
+    _effect: &SetEffectReport,
+    condition_1: &SetConditionReport,
+    _condition_2: &SetConditionReport,
+    velocity: i32,
+) -> i32 {
+    let velocity_delta = velocity as i32 - (condition_1.cp_offset - condition_1.dead_band) as i32;
+    if velocity >= 0 {
+        condition_1.positive_coefficient as i32 * velocity_delta
+    } else {
+        condition_1.negative_coefficient as i32 * velocity_delta
     }
 }
 
@@ -123,8 +183,7 @@ impl HIDDeviceType for RacingWheel {
                     .ok_or(())?;
                 if report.parameter_block_offset == 0 {
                     effect.parameter_1 = Some(EffectParameter::Condition(report));
-                }
-                else if report.parameter_block_offset == 1 {
+                } else if report.parameter_block_offset == 1 {
                     effect.parameter_2 = Some(EffectParameter::Condition(report));
                 }
                 Ok(Some(true))
@@ -231,7 +290,7 @@ impl HIDDeviceType for RacingWheel {
     }
 
     fn send_input_reports<B: UsbBus>(&mut self, writer: ReportWriter<B>) -> Result<(), UsbError> {
-        writer.write_report(self.joystick_report.clone())?;
+        writer.write_report(self.racing_wheel_report.clone())?;
         writer.write_report(self.pid_state_report.clone())?;
 
         Ok(())

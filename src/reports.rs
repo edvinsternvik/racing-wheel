@@ -356,7 +356,7 @@ impl HIDReportRAM<10> for SetPeriodicReport {
 #[derive(Clone, Copy)]
 pub struct SetConstantForceReport {
     pub effect_block_index: u8,
-    pub magnitude: u16,
+    pub magnitude: i16,
 }
 
 impl HIDReport for SetConstantForceReport {
@@ -373,7 +373,7 @@ impl HIDReportRAM<2> for SetConstantForceReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            magnitude: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
+            magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
         })
     }
 

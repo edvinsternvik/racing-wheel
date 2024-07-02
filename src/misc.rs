@@ -3,7 +3,7 @@ pub struct FixedSet<T, const N: usize> {
     n: usize,
 }
 
-impl<T: Eq + Copy + Clone + Default, const N: usize> FixedSet<T, N> {
+impl<T: Eq + PartialEq + Copy + Clone + Default, const N: usize> FixedSet<T, N> {
     pub fn new() -> Self {
         Self {
             array: [T::default(); N],
@@ -16,7 +16,7 @@ impl<T: Eq + Copy + Clone + Default, const N: usize> FixedSet<T, N> {
     }
 
     pub fn insert(&mut self, elem: T) -> bool {
-        if self.n >= N || self.items().iter().any(|e| *e == elem) {
+        if self.n >= N || self.array.iter().any(|e| *e == elem) {
             return false;
         }
         self.array[self.n] = elem;
@@ -25,18 +25,38 @@ impl<T: Eq + Copy + Clone + Default, const N: usize> FixedSet<T, N> {
     }
 
     pub fn remove(&mut self, v: T) -> bool {
-        for (i, item) in self.items().iter().enumerate() {
-            if *item == v {
-                self.array[i] = self.array[self.n - 1];
-                self.n -= 1;
-                return true;
+        let n_prev = self.n;
+
+        self.n = 0;
+        for i in 0..n_prev {
+            if self.array[i] != v {
+                self.array[self.n] = self.array[i];
+                self.n += 1;
             }
         }
-        false
+
+        self.n == n_prev
     }
 
-    pub fn items(&self) -> &[T] {
-        &self.array[0..self.n]
+    pub fn iter(&self) -> FixedSetIterator<'_, T, N> {
+        FixedSetIterator {
+            fixed_set: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct FixedSetIterator<'a, T, const N: usize> {
+    fixed_set: &'a FixedSet<T, N>,
+    index: usize,
+}
+
+impl<'a, T, const N: usize> Iterator for FixedSetIterator<'a, T, N> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.index += 1;
+        self.fixed_set.array.get(self.index - 1)
     }
 }
 

@@ -49,6 +49,16 @@ fn main() -> ! {
 
     let button_a = gpioa.pa2.into_pull_down_input(&mut gpioa.crl);
     let button_b = gpioa.pa3.into_pull_down_input(&mut gpioa.crl);
+    
+    // LEDs
+    let mut gpiob = dp.GPIOB.split();
+    let mut led_pins = [
+        gpiob.pb5.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpiob.pb6.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpiob.pb7.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpiob.pb8.into_push_pull_output(&mut gpiob.crh).erase(),
+        gpiob.pb9.into_push_pull_output(&mut gpiob.crh).erase(),
+    ];
 
     // Setup USB
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
@@ -81,12 +91,25 @@ fn main() -> ! {
         if report_timer.wait().is_ok() {
             let x_raw: u16 = adc.read(&mut analog_x_pin).unwrap();
             let y_raw: u16 = adc.read(&mut analog_y_pin).unwrap();
+            let mut buttons = [false; 8];
+            buttons[0] = button_a.is_high();
+            buttons[1] = button_b.is_high();
 
-            let joystick = racing_wheel.get_device_mut().joystick_report_mut();
-            joystick.throttle = (-(x_raw as i32) + 2047) as i16 * 16;
-            joystick.steering = ((y_raw as i32) - 2048) as i16 * 16;
-            joystick.buttons[0] = button_a.is_high();
-            joystick.buttons[1] = button_b.is_high();
+            racing_wheel.get_device_mut().set_throttle((-(x_raw as i32) + 2047) as i16 * 16);
+            racing_wheel.get_device_mut().set_steering(((y_raw as i32) - 2048) as i16 * 16);
+            racing_wheel.get_device_mut().set_buttons(buttons);
+
+            let ffb = racing_wheel.get_device().get_force_feedback();
+            const FFB_MAX: i32 = 10_000;
+            let n_leds = (ffb as i64 * led_pins.len() as i64) / (FFB_MAX as i64);
+            for i in 0..led_pins.len() {
+                if (i as i64) < n_leds {
+                    led_pins[i].set_high();
+                }
+                else {
+                    led_pins[i].set_low();
+                }
+            }
 
             racing_wheel.send_input_reports();
         }

@@ -24,6 +24,12 @@ impl<const MAX_EFFECTS: usize, const CUSTOM_DATA_BUFFER_SIZE: usize>
             .as_mut()
     }
 
+    pub fn get_effect(&self, effect_block_index: u8) -> Option<&Effect> {
+        self.effects
+            .get(effect_block_index as usize - 1)?
+            .as_ref()
+    }
+
     pub fn new_effect(&mut self) -> Option<u8> {
         let effects = self.effects.iter().enumerate();
         let index = effects.filter(|e| e.1.is_none()).next().map(|e| e.0)?;
