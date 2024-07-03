@@ -3,7 +3,7 @@ use crate::{
     hid::{GetReportInWriter, ReportWriter},
     hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
     misc::FixedSet,
-    ram_pool::{EffectParameter, RAMPool},
+    ram_pool::{Effect, EffectParameter, RAMPool},
     reports::*,
 };
 use usb_device::{bus::UsbBus, UsbError};
@@ -69,24 +69,20 @@ impl RacingWheel {
     }
 
     pub fn get_force_feedback(&self) -> i16 {
-        use EffectParameter::*;
-
         let mut total = 0;
         for running_effect in self.running_effects.iter() {
             let effect = self.ram_pool.get_effect(running_effect.index);
             let t = running_effect.time;
 
             if let Some(effect) = effect {
-                let res = match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
-                    (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => {
-                        constant_ffb(&e, &p1, &p2, t)
-                    }
-                    (Some(e), Some(Condition(p1)), Some(Condition(p2))) => {
-                        damper_ffb(&e, &p1, &p2, self.steering_velocity)
-                    }
-                    _ => 0,
-                };
-                total = add_forces(total, res);
+                let force = calculate_force_feedback(
+                    effect,
+                    t,
+                    self.racing_wheel_report.steering,
+                    self.steering_velocity,
+                    0,
+                );
+                total = add_forces(total, force);
             }
         }
 
@@ -118,6 +114,38 @@ impl RacingWheel {
         }
 
         self.running_effects = still_running;
+    }
+}
+
+fn calculate_force_feedback(
+    effect: &Effect,
+    time: u32,
+    position: i16,
+    velocity: i16,
+    acceleration: i16,
+) -> i16 {
+    use EffectParameter::*;
+
+    match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
+        (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => constant_ffb(&e, &p1, &p2, time),
+        (Some(e), Some(RampForce(p1)), Some(Envelope(p2))) => ramp_ffb(&e, &p1, &p2, time),
+        (Some(_), Some(CustomForce(_p)), None) => 0,
+        (Some(e), Some(Periodic(p1)), Some(Envelope(p2))) => match e.effect_type {
+            EffectType::Square => periodic_ffb(&e, &p1, &p2, time, square_fn),
+            EffectType::Sine => periodic_ffb(&e, &p1, &p2, time, sine_fn),
+            EffectType::Triangle => periodic_ffb(&e, &p1, &p2, time, triangle_fn),
+            EffectType::SawtoothUp => periodic_ffb(&e, &p1, &p2, time, sawtooth_up_fn),
+            EffectType::SawtoothDown => periodic_ffb(&e, &p1, &p2, time, sawtooth_down_fn),
+            _ => 0,
+        },
+        (Some(e), Some(Condition(p1)), Some(Condition(p2))) => match e.effect_type {
+            EffectType::Spring => condition_ffb(&e, &p1, &p2, position),
+            EffectType::Damper => condition_ffb(&e, &p1, &p2, velocity),
+            EffectType::Inertia => condition_ffb(&e, &p1, &p2, acceleration),
+            EffectType::Friction => 0,
+            _ => 0,
+        },
+        _ => 0,
     }
 }
 
@@ -187,15 +215,97 @@ fn constant_ffb(
     force
 }
 
-fn damper_ffb(
+fn ramp_ffb(
+    effect: &SetEffectReport,
+    ramp_force: &SetRampForceReport,
+    envelope: &SetEnvelopeReport,
+    time: u32,
+) -> i16 {
+    if let Some(duration) = effect.duration {
+        let force = ramp_force.ramp_start
+            + (((ramp_force.ramp_end - ramp_force.ramp_start) as i32 * time as i32)
+                / duration as i32) as i16;
+
+        let force = apply_envelope(force, envelope, time, effect.duration);
+        let force = apply_gain(force, effect.gain);
+        force
+    } else {
+        0
+    }
+}
+
+fn condition_ffb(
     effect: &SetEffectReport,
     condition_1: &SetConditionReport,
     _condition_2: &SetConditionReport,
-    velocity: i16,
+    metric: i16,
 ) -> i16 {
-    let force = condition_force(velocity, condition_1);
+    let force = condition_force(metric, condition_1);
     let force = apply_gain(force, effect.gain);
     force
+}
+
+fn periodic_ffb(
+    effect: &SetEffectReport,
+    periodic: &SetPeriodicReport,
+    envelope: &SetEnvelopeReport,
+    time: u32,
+    f: fn(u32, i16, u32) -> i16,
+) -> i16 {
+    let effect_time = 0;
+    let force = f(effect_time, periodic.magnitude as i16, periodic.period);
+    let force = apply_envelope(force, envelope, time, effect.duration);
+    let force = apply_gain(force, effect.gain);
+    force
+}
+
+fn square_fn(t: u32, magnitude: i16, period: u32) -> i16 {
+    let t = t % period;
+    let period_h = period / 2;
+    let r = if t >= period_h { magnitude } else { -magnitude };
+    r
+}
+
+fn sine_fn(t: u32, magnitude: i16, period: u32) -> i16 {
+    const LUT_SAMPLES: usize = 64;
+    const SIN_LUT: [i16; LUT_SAMPLES + 1] = [
+        0, 804, 1607, 2410, 3211, 4011, 4807, 5601, 6392, 7179, 7961, 8739, 9511, 10278, 11038,
+        11792, 12539, 13278, 14009, 14732, 15446, 16150, 16845, 17530, 18204, 18867, 19519, 20159,
+        20787, 21402, 22004, 22594, 23169, 23731, 24278, 24811, 25329, 25831, 26318, 26789, 27244,
+        27683, 28105, 28510, 28897, 29268, 29621, 29955, 30272, 30571, 30851, 31113, 31356, 31580,
+        31785, 31970, 32137, 32284, 32412, 32520, 32609, 32678, 32727, 32757, 32767,
+    ];
+    let period = period as u64;
+    let mut t = (t as u64 % period) * 4;
+    let mut sign = 1;
+    if t >= 2 * period {
+        sign = -1;
+        t -= 2 * period;
+    }
+    if t >= period {
+        t = 2 * period - t;
+    }
+    let index = (t as u64 * LUT_SAMPLES as u64) / period as u64;
+    let force = sign * SIN_LUT[index as usize] as i32;
+
+    ((force * magnitude as i32) / (i16::MAX as i32)) as i16
+}
+
+fn triangle_fn(t: u32, magnitude: i16, period: u32) -> i16 {
+    let period = period as i64;
+    let t = (t as i64 % period) * 2;
+    let t = if t < period { t } else { 2 * period - t };
+    ((2 * t * magnitude as i64) / period as i64) as i16 - magnitude
+}
+
+fn sawtooth_up_fn(t: u32, magnitude: i16, period: u32) -> i16 {
+    let period = period as i64;
+    let t = t as i64 % period;
+    ((2 * t * magnitude as i64) / period as i64) as i16 - magnitude
+}
+
+fn sawtooth_down_fn(t: u32, magnitude: i16, period: u32) -> i16 {
+    -sawtooth_up_fn(t, magnitude, period)
 }
 
 impl HIDDeviceType for RacingWheel {

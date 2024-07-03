@@ -15,7 +15,6 @@ use crate::hid::HID;
 use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
 use panic_halt as _;
 use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
