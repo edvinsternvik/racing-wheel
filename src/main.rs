@@ -10,10 +10,12 @@ mod ram_pool;
 mod reports;
 mod simple_wheel;
 
+use crate::descriptor::FORCE_LOGICAL_MAX;
 use crate::hid::HID;
 use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
+use cortex_m_semihosting::hprintln;
 use panic_halt as _;
 use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
@@ -63,12 +65,12 @@ fn main() -> ! {
     let button_b = gpioa.pa3.into_pull_down_input(&mut gpioa.crl);
 
     // LEDs
-   let mut led_pins = [
-        gpiob.pb5.into_push_pull_output(&mut gpiob.crl).erase(),
-        //gpiob.pb6.into_push_pull_output(&mut gpiob.crl).erase(),
-        //gpiob.pb7.into_push_pull_output(&mut gpiob.crl).erase(),
-        //gpiob.pb8.into_push_pull_output(&mut gpiob.crh).erase(),
-        //gpiob.pb9.into_push_pull_output(&mut gpiob.crh).erase(),
+    let mut led_pins = [
+        gpiob.pb11.into_push_pull_output(&mut gpiob.crh).erase(),
+        gpiob.pb10.into_push_pull_output(&mut gpiob.crh).erase(),
+        gpiob.pb1.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpiob.pb0.into_push_pull_output(&mut gpiob.crl).erase(),
+        gpioa.pa7.into_push_pull_output(&mut gpioa.crl).erase(),
     ];
 
     // Setup USB
@@ -100,7 +102,7 @@ fn main() -> ! {
         usb_device.poll(&mut [&mut racing_wheel]);
 
         if report_timer.wait().is_ok() {
-            let steering = dp.TIM4.cnt.read().cnt().bits() as i16;
+            let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
             let throttle_raw: u16 = adc.read(&mut analog_throttle_pin).unwrap();
             let mut buttons = [false; 8];
             buttons[0] = button_a.is_high();
@@ -111,12 +113,14 @@ fn main() -> ! {
                 .set_throttle((-(throttle_raw as i32) + 2047) as i16 * 16);
             racing_wheel
                 .get_device_mut()
-                .set_steering(steering);
+                .set_steering(((steering_raw as i32 * 3) / 2) as i16);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
             let ffb = racing_wheel.get_device().get_force_feedback();
-            const FFB_MAX: i32 = 10_000;
-            let n_leds = (ffb as i64 * led_pins.len() as i64) / (FFB_MAX as i64);
+            racing_wheel.get_device_mut().advance(10);
+
+            let n_leds = (ffb as i64 * led_pins.len() as i64 + (FORCE_LOGICAL_MAX as i64 - 1))
+                / (FORCE_LOGICAL_MAX as i64);
             for i in 0..led_pins.len() {
                 if (i as i64) < n_leds {
                     led_pins[i].set_high();

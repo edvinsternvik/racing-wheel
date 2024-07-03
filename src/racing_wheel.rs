@@ -1,5 +1,5 @@
 use crate::{
-    descriptor::RACING_WHEEL_DESCRIPTOR,
+    descriptor::{FORCE_LOGICAL_MAX, FORCE_LOGICAL_MIN, GAIN_MAX, RACING_WHEEL_DESCRIPTOR},
     hid::{GetReportInWriter, ReportWriter},
     hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
     misc::FixedSet,
@@ -12,14 +12,33 @@ const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
 const MAX_EFFECTS: usize = 16;
 const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
 
+#[derive(Copy, Clone, Eq, Default)]
+struct RunningEffect {
+    index: u8,
+    time: u32,
+}
+
+impl PartialEq for RunningEffect {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl RunningEffect {
+    fn new(index: u8) -> Self {
+        Self { index, time: 0 }
+    }
+}
+
 pub struct RacingWheel {
     ram_pool: RAMPool<MAX_EFFECTS, CUSTOM_DATA_BUFFER_SIZE>,
     next_effect: Option<CreateNewEffectReport>,
-    running_effects: FixedSet<u8, MAX_SIMULTANEOUS_EFFECTS>,
+    running_effects: FixedSet<RunningEffect, MAX_SIMULTANEOUS_EFFECTS>,
     device_gain: u8,
     racing_wheel_report: RacingWheelReport,
     pid_state_report: PIDStateReport,
     steering_prev: i16,
+    steering_velocity: i16,
 }
 
 impl RacingWheel {
@@ -32,11 +51,12 @@ impl RacingWheel {
             racing_wheel_report: RacingWheelReport::default(),
             pid_state_report: PIDStateReport::default(),
             steering_prev: 0,
+            steering_velocity: 0,
         }
     }
 
+    // Steering angle in degrees * 10^-1
     pub fn set_steering(&mut self, steering: i16) {
-        self.steering_prev = self.racing_wheel_report.steering;
         self.racing_wheel_report.steering = steering;
     }
 
@@ -48,54 +68,134 @@ impl RacingWheel {
         self.racing_wheel_report.buttons = buttons;
     }
 
-    pub fn get_force_feedback(&self) -> i32 {
+    pub fn get_force_feedback(&self) -> i16 {
         use EffectParameter::*;
-        let steering_velocity = (self.racing_wheel_report.steering - self.steering_prev) as i32;
 
         let mut total = 0;
-        for effect_block_index in self.running_effects.iter() {
-            let effect = self.ram_pool.get_effect(*effect_block_index);
+        for running_effect in self.running_effects.iter() {
+            let effect = self.ram_pool.get_effect(running_effect.index);
+            let t = running_effect.time;
 
             if let Some(effect) = effect {
                 let res = match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
                     (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => {
-                        constant_ffb(&e, &p1, &p2)
+                        constant_ffb(&e, &p1, &p2, t)
                     }
                     (Some(e), Some(Condition(p1)), Some(Condition(p2))) => {
-                        damper_ffb(&e, &p1, &p2, steering_velocity)
+                        damper_ffb(&e, &p1, &p2, self.steering_velocity)
                     }
                     _ => 0,
                 };
-                total += res;
+                total = add_forces(total, res);
             }
         }
 
-        total
+        apply_gain(total, self.device_gain)
     }
+
+    pub fn advance(&mut self, delta_time_ms: u32) {
+        self.steering_velocity =
+            (self.racing_wheel_report.steering - self.steering_prev) * delta_time_ms as i16;
+        self.steering_prev = self.racing_wheel_report.steering;
+
+        let mut still_running = FixedSet::new();
+        for running_effect in self.running_effects.iter_mut() {
+            running_effect.time += delta_time_ms;
+
+            let mut keep = true;
+            if let Some(effect) = self.ram_pool.get_effect(running_effect.index) {
+                if let Some(duration) = effect.effect_report.and_then(|e| e.duration) {
+                    keep = keep && duration as u32 > running_effect.time;
+                }
+                if running_effect.time > 10_000 && !effect.is_complete() {
+                    keep = false;
+                }
+            }
+
+            if keep {
+                still_running.insert(*running_effect);
+            }
+        }
+
+        self.running_effects = still_running;
+    }
+}
+
+fn add_forces(force1: i16, force2: i16) -> i16 {
+    i16::clamp(force1 + force2, FORCE_LOGICAL_MIN, FORCE_LOGICAL_MAX)
+}
+
+fn apply_gain(force: i16, gain: u8) -> i16 {
+    ((force as i32) * (gain as i32) / (GAIN_MAX as i32)) as i16
+}
+
+fn apply_envelope(
+    force: i16,
+    envelope: &SetEnvelopeReport,
+    time: u32,
+    duration: Option<u16>,
+) -> i16 {
+    let calc_fade_force = |fl, ft, t| {
+        let (fl, ft, m) = (fl as i64, ft as i64, FORCE_LOGICAL_MAX as i64);
+        let fade = ((fl * ft + (m - fl) * t as i64) / ft) as i32;
+
+        ((force as i32) * fade / (FORCE_LOGICAL_MAX as i32)) as i16
+    };
+
+    let duration = duration.unwrap_or(u16::MAX) as u32;
+
+    let mut result = force;
+    if time < envelope.attack_time {
+        let fade_force = calc_fade_force(envelope.attack_level, envelope.attack_time, time);
+        result = i16::min(result, fade_force);
+    }
+    if time <= duration && time + envelope.fade_time > duration {
+        let fade_force = calc_fade_force(envelope.fade_level, envelope.fade_time, duration - time);
+        result = i16::min(result, fade_force);
+    }
+
+    result
+}
+
+fn condition_force(metric: i16, condition: &SetConditionReport) -> i16 {
+    let force = if metric < condition.cp_offset - condition.dead_band as i16 {
+        let velocity_delta = metric - (condition.cp_offset - condition.dead_band as i16);
+        (condition.negative_coefficient as i32 * velocity_delta as i32) / (FORCE_LOGICAL_MAX as i32)
+    } else if metric > condition.cp_offset + condition.dead_band as i16 {
+        let velocity_delta = metric - (condition.cp_offset + condition.dead_band as i16);
+        (condition.positive_coefficient as i32 * velocity_delta as i32) / (FORCE_LOGICAL_MAX as i32)
+    } else {
+        0
+    };
+
+    i16::clamp(
+        force as i16,
+        -(condition.negative_saturation as i16),
+        condition.positive_saturation as i16,
+    )
 }
 
 fn constant_ffb(
-    _effect: &SetEffectReport,
+    effect: &SetEffectReport,
     constant_force: &SetConstantForceReport,
-    _envelope: &SetEnvelopeReport,
-) -> i32 {
-    //let gain = (effect.gain as i16) * (i16::MAX / u8::MAX as i16);
-    let magnitude = constant_force.magnitude;
-    magnitude as i32
+    envelope: &SetEnvelopeReport,
+    time: u32,
+) -> i16 {
+    let force = constant_force.magnitude;
+    let force = apply_envelope(force, envelope, time, effect.duration);
+    let force = apply_gain(force, effect.gain);
+    force
 }
 
 fn damper_ffb(
-    _effect: &SetEffectReport,
+    effect: &SetEffectReport,
     condition_1: &SetConditionReport,
     _condition_2: &SetConditionReport,
-    velocity: i32,
-) -> i32 {
-    let velocity_delta = velocity as i32 - (condition_1.cp_offset - condition_1.dead_band) as i32;
-    if velocity >= 0 {
-        condition_1.positive_coefficient as i32 * velocity_delta
-    } else {
-        condition_1.negative_coefficient as i32 * velocity_delta
-    }
+    velocity: i16,
+) -> i16 {
+    let force = condition_force(velocity, condition_1);
+    let force = apply_gain(force, effect.gain);
+    force
 }
 
 impl HIDDeviceType for RacingWheel {
@@ -226,14 +326,17 @@ impl HIDDeviceType for RacingWheel {
                 let report = EffectOperationReport::into_report(data).ok_or(())?;
                 match report.effect_operation {
                     EffectOperation::EffectStart => {
-                        self.running_effects.insert(report.effect_block_index);
+                        self.running_effects
+                            .insert(RunningEffect::new(report.effect_block_index));
                     }
                     EffectOperation::EffectStartSolo => {
                         self.running_effects = FixedSet::new();
-                        self.running_effects.insert(report.effect_block_index);
+                        self.running_effects
+                            .insert(RunningEffect::new(report.effect_block_index));
                     }
                     EffectOperation::EffectStop => {
-                        self.running_effects.remove(report.effect_block_index);
+                        self.running_effects
+                            .remove(RunningEffect::new(report.effect_block_index));
                     }
                 }
 

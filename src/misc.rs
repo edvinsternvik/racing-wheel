@@ -1,3 +1,5 @@
+use core::slice::{Iter, IterMut};
+
 pub struct FixedSet<T, const N: usize> {
     array: [T; N],
     n: usize,
@@ -38,25 +40,12 @@ impl<T: Eq + PartialEq + Copy + Clone + Default, const N: usize> FixedSet<T, N> 
         self.n == n_prev
     }
 
-    pub fn iter(&self) -> FixedSetIterator<'_, T, N> {
-        FixedSetIterator {
-            fixed_set: self,
-            index: 0,
-        }
+    pub fn iter(&self) -> Iter<'_, T> {
+        self.array[0..self.n].iter()
     }
-}
 
-pub struct FixedSetIterator<'a, T, const N: usize> {
-    fixed_set: &'a FixedSet<T, N>,
-    index: usize,
-}
-
-impl<'a, T, const N: usize> Iterator for FixedSetIterator<'a, T, N> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.index += 1;
-        self.fixed_set.array.get(self.index - 1)
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        self.array[0..self.n].iter_mut()
     }
 }
 

@@ -1,3 +1,8 @@
+pub const FORCE_LOGICAL_MAX: i16 = 10_000;
+pub const FORCE_LOGICAL_MIN: i16 = -10_000;
+pub const GAIN_MAX: i16 = 0xFF;
+
+#[rustfmt::skip]
 pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     // -- Joystick report --
 
@@ -23,11 +28,15 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x26, 0xFF, 0x7F,  //     Logical Maximum (32767)
     0x75, 0x10,        //     Report Size (16)
     0x95, 0x02,        //     Report Count (2)
+    0x66, 0x44, 0x00,  //     Unit (System: English Rotation, Length: Degrees)
+    0x55, 0xFF,        //     Unit Exponent (-1)
     0xA1, 0x00,        //     Collection (Physical)
     0x09, 0xC8,        //       USAGE (Steering)
     0x09, 0xBB,        //       USAGE (Throttle)
     0x81, 0x02,        //       Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,              //     End Collection
+    0x55, 0x00,        //     Unit Exponent (0)
+    0x65, 0x00,        //     Unit (None)
 
     0xC0,              //   End Collection
 
@@ -113,7 +122,7 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x35, 0x00,        //     Physical Minimum (0)
     0x46, 0xFF, 0x7F,  //     Physical Maximum (32767)
     0x66, 0x03, 0x10,  //     Unit (System: English Linear, Time: Seconds)
-    0x55, 0xFD,        //     Unit Exponent
+    0x55, 0xFD,        //     Unit Exponent (-3)
     0x75, 0x10,        //     Report Size (16)
     0x95, 0x03,        //     Report Count (3)
     0x91, 0x02,        //     Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
@@ -156,8 +165,8 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0xA1, 0x02,        //     Collection (Logical)
     0x0B, 0x01, 0x00, 0x0A, 0x00,  //       Usage (Ordinals: Instance 1)
     0x0B, 0x02, 0x00, 0x0A, 0x00,  //       Usage (Ordinals: Instance 2)
-    0x66, 0x14, 0x00,  //       Unit (System: English Rotation, Length: Centimeter)
-    0x55, 0xFE,        //       Unit Exponent
+    0x66, 0x44, 0x00,  //     Unit (System: English Rotation, Length: Degrees)
+    0x55, 0xFF,        //     Unit Exponent (-1)
     0x15, 0x00,        //       Logical Minimum (0)
     0x26, 0xFF, 0x00,  //       Logical Maximum (255)
     0x35, 0x00,        //       Physical Minimum (0)
@@ -172,7 +181,7 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x05, 0x0F,        //     Usage Page (PID Page)
     0x09, 0xA7,        //     Usage (Start Delay)
     0x66, 0x03, 0x10,  //     Unit (System: English Linear, Time: Seconds)
-    0x55, 0xFD,        //     Unit Exponent
+    0x55, 0xFD,        //     Unit Exponent (-3)
     0x15, 0x00,        //     Logical Minimum (0)
     0x26, 0xFF, 0x7F,  //     Logical Maximum (32767)
     0x35, 0x00,        //     Physical Minimum (0)
@@ -218,7 +227,7 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x09, 0x5C,        //     Usage (Attack Time)
     0x09, 0x5E,        //     Usage (Fade Time)
     0x66, 0x03, 0x10,  //     Unit (System: English Linear, Time: Seconds)
-    0x55, 0xFD,        //     Unit Exponent
+    0x55, 0xFD,        //     Unit Exponent (-3)
     0x27, 0xFF, 0x7F, 0x00, 0x00,  //     Logical Maximum (32766)
     0x47, 0xFF, 0x7F, 0x00, 0x00,  //     Physical Maximum (32766)
     0x75, 0x20,        //     Report Size (32)
@@ -315,8 +324,8 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x75, 0x10,        //     Report Size (16)
     0x91, 0x02,        //     Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
     0x09, 0x71,        //     Usage (Phase)
-    0x66, 0x14, 0x00,  //     Unit (System: English Rotation, Length: Centimeter)
-    0x55, 0xFE,        //     Unit Exponent
+    0x66, 0x44, 0x00,  //     Unit (System: English Rotation, Length: Degrees)
+    0x55, 0xFF,        //     Unit Exponent (-1)
     0x15, 0x00,        //     Logical Minimum (0)
     0x27, 0x9F, 0x8C, 0x00, 0x00,  //     Logical Maximum (35998)
     0x35, 0x00,        //     Physical Minimum (0)
@@ -330,7 +339,7 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x35, 0x00,        //     Physical Minimum (0)
     0x47, 0xFF, 0x7F, 0x00, 0x00,  //     Physical Maximum (32766)
     0x66, 0x03, 0x10,  //     Unit (System: English Linear, Time: Seconds)
-    0x55, 0xFD,        //     Unit Exponent
+    0x55, 0xFD,        //     Unit Exponent (-3)
     0x75, 0x20,        //     Report Size (32)
     0x95, 0x01,        //     Report Count (1)
     0x91, 0x02,        //     Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)

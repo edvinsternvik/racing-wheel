@@ -66,9 +66,9 @@ impl HIDReportIn<3> for PIDStateReport {
 pub struct SetEffectReport {
     pub effect_block_index: u8,
     pub effect_type: EffectType,
-    pub duration: u16,
+    pub duration: Option<u16>,
     pub trigger_repeat_interval: u16,
-    pub sample_period: u16,
+    pub sample_period: Option<u16>,
     pub gain: u8,
     pub trigger_button: u8,
     pub axis_x_enable: bool,
@@ -93,12 +93,22 @@ impl HIDReportOut for SetEffectReport {
 
 impl HIDReportRAM<18> for SetEffectReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
+        let duration = u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]);
+        let sample_period = u16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]);
         Some(Self {
             effect_block_index,
             effect_type: EffectType::try_from(*ram.get(0)?).ok()?,
-            duration: u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
+            duration: if duration == 0 || duration == u16::MAX {
+                None
+            } else {
+                Some(duration)
+            },
             trigger_repeat_interval: u16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]),
-            sample_period: u16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]),
+            sample_period: if sample_period == 0 {
+                None
+            } else {
+                Some(sample_period)
+            },
             gain: *ram.get(7)?,
             trigger_button: *ram.get(8)?,
             axis_x_enable: bitflag(*ram.get(9)?, 0),
@@ -121,12 +131,12 @@ impl HIDReportRAM<18> for SetEffectReport {
     fn to_ram(&self) -> [u8; 18] {
         [
             self.effect_type as u8,
-            self.duration.to_le_bytes()[0],
-            self.duration.to_le_bytes()[1],
+            self.duration.unwrap_or_default().to_le_bytes()[0],
+            self.duration.unwrap_or_default().to_le_bytes()[1],
             self.trigger_repeat_interval.to_le_bytes()[0],
             self.trigger_repeat_interval.to_le_bytes()[1],
-            self.sample_period.to_le_bytes()[0],
-            self.sample_period.to_le_bytes()[1],
+            self.sample_period.unwrap_or_default().to_le_bytes()[0],
+            self.sample_period.unwrap_or_default().to_le_bytes()[1],
             self.gain,
             self.trigger_button,
             bitflags(&[
@@ -250,9 +260,9 @@ pub struct SetConditionReport {
     pub parameter_block_offset: u8,
     pub type_specific_block_offset_instance_1: u8,
     pub type_specific_block_offset_instance_2: u8,
-    pub cp_offset: u16,
-    pub positive_coefficient: u16,
-    pub negative_coefficient: u16,
+    pub cp_offset: i16,
+    pub positive_coefficient: i16,
+    pub negative_coefficient: i16,
     pub positive_saturation: u16,
     pub negative_saturation: u16,
     pub dead_band: u16,
@@ -275,9 +285,9 @@ impl HIDReportRAM<13> for SetConditionReport {
             parameter_block_offset: bits(*ram.get(0)?, 0, 4),
             type_specific_block_offset_instance_1: bits(*ram.get(0)?, 4, 2),
             type_specific_block_offset_instance_2: bits(*ram.get(0)?, 6, 2),
-            cp_offset: u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
-            positive_coefficient: u16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]),
-            negative_coefficient: u16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]),
+            cp_offset: i16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
+            positive_coefficient: i16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]),
+            negative_coefficient: i16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]),
             positive_saturation: u16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]),
             negative_saturation: u16::from_le_bytes([*ram.get(9)?, *ram.get(10)?]),
             dead_band: u16::from_le_bytes([*ram.get(11)?, *ram.get(12)?]),
@@ -310,7 +320,7 @@ impl HIDReportRAM<13> for SetConditionReport {
 pub struct SetPeriodicReport {
     pub effect_block_index: u8,
     pub magnitude: u16,
-    pub offset: u16,
+    pub offset: i16,
     pub phase: u16,
     pub period: u32,
 }
@@ -330,7 +340,7 @@ impl HIDReportRAM<10> for SetPeriodicReport {
         Some(Self {
             effect_block_index,
             magnitude: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
-            offset: u16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
+            offset: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
             phase: u16::from_le_bytes([*ram.get(4)?, *ram.get(5)?]),
             period: u32::from_le_bytes([*ram.get(6)?, *ram.get(7)?, *ram.get(8)?, *ram.get(9)?]),
         })
@@ -389,8 +399,8 @@ impl HIDReportRAM<2> for SetConstantForceReport {
 #[derive(Clone, Copy)]
 pub struct SetRampForceReport {
     pub effect_block_index: u8,
-    pub ramp_start: u16,
-    pub ramp_end: u16,
+    pub ramp_start: i16,
+    pub ramp_end: i16,
 }
 
 impl HIDReport for SetRampForceReport {
@@ -407,8 +417,8 @@ impl HIDReportRAM<4> for SetRampForceReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            ramp_start: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
-            ramp_end: u16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
+            ramp_start: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
+            ramp_end: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
         })
     }
 
@@ -475,7 +485,7 @@ impl HIDReportRAM<15> for CustomForceDataReport {
 // Download Force Sample
 #[derive(Clone, Copy)]
 pub struct DownloadForceSample {
-    pub steering: u8,
+    pub steering: i8,
     pub throttle: u8,
 }
 
@@ -486,7 +496,7 @@ impl HIDReport for DownloadForceSample {
 impl HIDReportOut for DownloadForceSample {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            steering: *bytes.get(1)?,
+            steering: *bytes.get(1)? as i8,
             throttle: *bytes.get(2)?,
         })
     }
