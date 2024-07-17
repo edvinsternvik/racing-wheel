@@ -252,7 +252,7 @@ fn periodic_ffb(
     time: u32,
     f: fn(u32, i16, u32) -> i16,
 ) -> i16 {
-    let effect_time = 0;
+    let effect_time = time + ((periodic.phase as u64 * periodic.period as u64) / 36_000) as u32;
     let force = f(effect_time, periodic.magnitude as i16, periodic.period);
     let force = apply_envelope(force, envelope, time, effect.duration);
     let force = apply_gain(force, effect.gain);
