@@ -5,13 +5,14 @@ mod descriptor;
 mod hid;
 mod hid_device;
 mod misc;
+mod motor;
 mod racing_wheel;
 mod ram_pool;
 mod reports;
 mod simple_wheel;
 
-use crate::descriptor::FORCE_LOGICAL_MAX;
 use crate::hid::HID;
+use crate::motor::{Motor, PWMType};
 use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
@@ -20,6 +21,7 @@ use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
+use stm32f1xx_hal::timer::Tim3NoRemap;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
 use usb_device::device::{UsbDeviceBuilder, UsbVidPid};
 
@@ -54,23 +56,28 @@ fn main() -> ! {
 
     assert!(clocks.usbclk_valid());
 
-    // Setup buttons and analog input
+    // Setup motor
     let mut gpioa = dp.GPIOA.split();
+    let mut afio = dp.AFIO.constrain();
 
+    let _reverse_enable_pin = gpioa.pa4.into_push_pull_output(&mut gpioa.crl);
+    let forward_enable_pin = gpioa.pa5.into_push_pull_output(&mut gpioa.crl);
+
+    let reverse_pwm_pin = gpioa.pa6.into_alternate_push_pull(&mut gpioa.crl);
+    let forward_pwm_pin = gpioa.pa7.into_alternate_push_pull(&mut gpioa.crl);
+    let pwm_pins = (reverse_pwm_pin, forward_pwm_pin);
+    let pwm = dp
+        .TIM3
+        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 20_000.Hz(), &clocks);
+    let (_pwm_reverse, pwm_forward) = pwm.split();
+    let _motor = Motor::new(forward_enable_pin.erase(), pwm_forward, PWMType::Inverted);
+
+    // Setup buttons and analog input
     let mut adc = Adc::adc1(dp.ADC1, clocks);
     let mut analog_throttle_pin = gpioa.pa0.into_analog(&mut gpioa.crl);
 
     let button_a = gpioa.pa2.into_pull_down_input(&mut gpioa.crl);
     let button_b = gpioa.pa3.into_pull_down_input(&mut gpioa.crl);
-
-    // LEDs
-    let mut led_pins = [
-        gpiob.pb11.into_push_pull_output(&mut gpiob.crh).erase(),
-        gpiob.pb10.into_push_pull_output(&mut gpiob.crh).erase(),
-        gpiob.pb1.into_push_pull_output(&mut gpiob.crl).erase(),
-        gpiob.pb0.into_push_pull_output(&mut gpiob.crl).erase(),
-        gpioa.pa7.into_push_pull_output(&mut gpioa.crl).erase(),
-    ];
 
     // Setup USB
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
@@ -115,18 +122,8 @@ fn main() -> ! {
                 .set_steering(((steering_raw as i32 * 3) / 2) as i16);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
-            let ffb = racing_wheel.get_device().get_force_feedback();
+            let _ffb = racing_wheel.get_device().get_force_feedback();
             racing_wheel.get_device_mut().advance(10);
-
-            let n_leds = (ffb as i64 * led_pins.len() as i64 + (FORCE_LOGICAL_MAX as i64 - 1))
-                / (FORCE_LOGICAL_MAX as i64);
-            for i in 0..led_pins.len() {
-                if (i as i64) < n_leds {
-                    led_pins[i].set_high();
-                } else {
-                    led_pins[i].set_low();
-                }
-            }
 
             racing_wheel.send_input_reports();
         }
