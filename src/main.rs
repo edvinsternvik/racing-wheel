@@ -11,12 +11,13 @@ mod ram_pool;
 mod reports;
 mod simple_wheel;
 
-use crate::hid::HID;
-use crate::motor::{Motor, PWMType};
-use crate::racing_wheel::RacingWheel;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
+use descriptor::FORCE_LOGICAL_MAX;
+use hid::HID;
+use motor::{Motor, PWMType};
 use panic_halt as _;
+use racing_wheel::RacingWheel;
 use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
@@ -68,9 +69,9 @@ fn main() -> ! {
     let pwm_pins = (reverse_pwm_pin, forward_pwm_pin);
     let pwm = dp
         .TIM3
-        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 20_000.Hz(), &clocks);
+        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 8_000.Hz(), &clocks);
     let (_pwm_reverse, pwm_forward) = pwm.split();
-    let _motor = Motor::new(forward_enable_pin.erase(), pwm_forward, PWMType::Inverted);
+    let mut motor = Motor::new(forward_enable_pin.erase(), pwm_forward, PWMType::Inverted);
 
     // Setup buttons and analog input
     let mut adc = Adc::adc1(dp.ADC1, clocks);
@@ -122,8 +123,10 @@ fn main() -> ! {
                 .set_steering(((steering_raw as i32 * 3) / 2) as i16);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
-            let _ffb = racing_wheel.get_device().get_force_feedback();
+            let ffb = racing_wheel.get_device().get_force_feedback();
             racing_wheel.get_device_mut().advance(10);
+
+            motor.set_speed(ffb, FORCE_LOGICAL_MAX);
 
             racing_wheel.send_input_reports();
         }

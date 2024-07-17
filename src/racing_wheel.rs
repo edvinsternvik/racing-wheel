@@ -86,7 +86,8 @@ impl RacingWheel {
             }
         }
 
-        apply_gain(total, self.device_gain)
+        let force = apply_gain(total, self.device_gain);
+        i16::clamp(force, FORCE_LOGICAL_MIN, FORCE_LOGICAL_MAX)
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
