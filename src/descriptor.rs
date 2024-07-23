@@ -1,5 +1,5 @@
-pub const FORCE_LOGICAL_MAX: i16 = 10_000;
-pub const FORCE_LOGICAL_MIN: i16 = -10_000;
+pub const FORCE_LOGICAL_MAX: i32 = 10_000;
+pub const FORCE_LOGICAL_MIN: i32 = -10_000;
 pub const GAIN_MAX: i16 = 0xFF;
 
 #[rustfmt::skip]

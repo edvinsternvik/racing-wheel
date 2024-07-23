@@ -13,9 +13,9 @@ mod simple_wheel;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use descriptor::FORCE_LOGICAL_MAX;
 use hid::HID;
-use motor::{Motor, PWMType};
+use misc::Signal;
+use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;
 use stm32f1xx_hal::adc::Adc;
@@ -61,8 +61,7 @@ fn main() -> ! {
     let mut gpioa = dp.GPIOA.split();
     let mut afio = dp.AFIO.constrain();
 
-    let _reverse_enable_pin = gpioa.pa4.into_push_pull_output(&mut gpioa.crl);
-    let forward_enable_pin = gpioa.pa5.into_push_pull_output(&mut gpioa.crl);
+    let motor_enable_pin = gpioa.pa5.into_push_pull_output(&mut gpioa.crl);
 
     let reverse_pwm_pin = gpioa.pa6.into_alternate_push_pull(&mut gpioa.crl);
     let forward_pwm_pin = gpioa.pa7.into_alternate_push_pull(&mut gpioa.crl);
@@ -70,8 +69,8 @@ fn main() -> ! {
     let pwm = dp
         .TIM3
         .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 8_000.Hz(), &clocks);
-    let (_pwm_reverse, pwm_forward) = pwm.split();
-    let mut motor = Motor::new(forward_enable_pin.erase(), pwm_forward, PWMType::Inverted);
+    let (pwm_reverse, pwm_forward) = pwm.split();
+    let mut motor = Motor::new(motor_enable_pin.erase(), pwm_forward, pwm_reverse);
 
     // Setup buttons and analog input
     let mut adc = Adc::adc1(dp.ADC1, clocks);
@@ -110,23 +109,28 @@ fn main() -> ! {
 
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
-            let throttle_raw: u16 = adc.read(&mut analog_throttle_pin).unwrap();
+            let throttle_raw = Signal::<-10_000, 10_000>::new(
+                adc.read(&mut analog_throttle_pin).unwrap(),
+                0,
+                adc.max_sample() as i32,
+            );
             let mut buttons = [false; 8];
             buttons[0] = button_a.is_high();
             buttons[1] = button_b.is_high();
 
             racing_wheel
                 .get_device_mut()
-                .set_throttle((-(throttle_raw as i32) + 2047) as i16 * 16);
+                .set_throttle((-(throttle_raw.value()) + 2047) as i16 * 16);
             racing_wheel
                 .get_device_mut()
                 .set_steering(((steering_raw as i32 * 3) / 2) as i16);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
-            let ffb = racing_wheel.get_device().get_force_feedback();
+            //let ffb = racing_wheel.get_device().get_force_feedback();
             racing_wheel.get_device_mut().advance(10);
 
-            motor.set_speed(ffb, FORCE_LOGICAL_MAX);
+            //motor.set_speed(ffb, FORCE_LOGICAL_MAX);
+            motor.set_speed(throttle_raw);
 
             racing_wheel.send_input_reports();
         }

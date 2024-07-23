@@ -2,7 +2,7 @@ use crate::{
     descriptor::{FORCE_LOGICAL_MAX, FORCE_LOGICAL_MIN, GAIN_MAX, RACING_WHEEL_DESCRIPTOR},
     hid::{GetReportInWriter, ReportWriter},
     hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
-    misc::FixedSet,
+    misc::{FixedSet, Signal},
     ram_pool::{Effect, EffectParameter, RAMPool},
     reports::*,
 };
@@ -11,6 +11,8 @@ use usb_device::{bus::UsbBus, UsbError};
 const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
 const MAX_EFFECTS: usize = 16;
 const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
+
+type FFBSignal = Signal<FORCE_LOGICAL_MIN, FORCE_LOGICAL_MAX>;
 
 #[derive(Copy, Clone, Eq, Default)]
 struct RunningEffect {
@@ -68,7 +70,7 @@ impl RacingWheel {
         self.racing_wheel_report.buttons = buttons;
     }
 
-    pub fn get_force_feedback(&self) -> i16 {
+    pub fn get_force_feedback(&self) -> FFBSignal {
         let mut total = 0;
         for running_effect in self.running_effects.iter() {
             let effect = self.ram_pool.get_effect(running_effect.index);
@@ -86,8 +88,8 @@ impl RacingWheel {
             }
         }
 
-        let force = apply_gain(total, self.device_gain);
-        i16::clamp(force, FORCE_LOGICAL_MIN, FORCE_LOGICAL_MAX)
+        let force = apply_gain(total, self.device_gain) as i32;
+        force.into()
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
@@ -151,7 +153,7 @@ fn calculate_force_feedback(
 }
 
 fn add_forces(force1: i16, force2: i16) -> i16 {
-    i16::clamp(force1 + force2, FORCE_LOGICAL_MIN, FORCE_LOGICAL_MAX)
+    i16::clamp(force1 + force2, FORCE_LOGICAL_MIN as i16, FORCE_LOGICAL_MAX as i16)
 }
 
 fn apply_gain(force: i16, gain: u8) -> i16 {
