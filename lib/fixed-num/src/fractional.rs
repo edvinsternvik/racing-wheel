@@ -4,6 +4,35 @@ use core::ops::{Div, Mul, Neg};
 #[derive(Clone, Copy, Default)]
 pub struct Frac<T>(T, T);
 
+impl<T: Copy + Into<i64>> Eq for Frac<T> {}
+
+impl<T> Ord for Frac<T>
+where
+    T: Copy + Into<i64>,
+{
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        (self.0.into() * other.1.into()).cmp(&(other.0.into() * self.1.into()))
+    }
+}
+
+impl<T> PartialOrd for Frac<T>
+where
+    T: Copy + Into<i64>,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> PartialEq for Frac<T>
+where
+    T: Copy + Into<i64>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0.into() * other.1.into() == other.0.into() * self.1.into()
+    }
+}
+
 impl<T: Copy> Frac<T> {
     pub fn new(numerator: T, denomerator: T) -> Self {
         Self(numerator, denomerator)
