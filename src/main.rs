@@ -13,7 +13,7 @@ use cortex_m_rt::entry;
 use fixed::FracU16;
 use motor::Motor;
 use panic_halt as _;
-use racing_wheel::racing_wheel::RacingWheel;
+use racing_wheel::RacingWheel;
 use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
