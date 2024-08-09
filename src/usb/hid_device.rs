@@ -1,6 +1,6 @@
 use core::convert::TryFrom;
 use usb_device::{bus::UsbBus, UsbError};
-use crate::hid::{GetReportInWriter, ReportWriter};
+use crate::usb::hid::{GetReportInWriter, ReportWriter};
 
 pub trait HIDDeviceType {
     fn descriptor() -> &'static [u8];

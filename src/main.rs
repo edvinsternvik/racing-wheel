@@ -1,30 +1,26 @@
 #![no_std]
 #![no_main]
 
-mod descriptor;
 mod fixed;
-mod hid;
-mod hid_device;
 mod misc;
 mod motor;
 mod racing_wheel;
-mod ram_pool;
-mod reports;
 mod simple_wheel;
+mod usb;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use fixed::{Frac16, FracU16};
-use hid::HID;
+use fixed::FracU16;
 use motor::Motor;
 use panic_halt as _;
-use racing_wheel::RacingWheel;
+use racing_wheel::racing_wheel::RacingWheel;
 use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::timer::Tim3NoRemap;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
+use usb::hid::HID;
 use usb_device::device::{UsbDeviceBuilder, UsbVidPid};
 
 #[entry]

@@ -1,5 +1,3 @@
-pub const FORCE_LOGICAL_MAX: i32 = 10_000;
-
 #[rustfmt::skip]
 pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     // -- Joystick report --

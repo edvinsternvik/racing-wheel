@@ -1,7 +1,9 @@
 use crate::{
-    hid::ReportWriter,
-    hid_device::{HIDDeviceType, HIDReport, HIDReportIn, ReportID, ReportType},
     misc::bitflags,
+    usb::{
+        hid::ReportWriter,
+        hid_device::{HIDDeviceType, HIDReport, HIDReportIn, ReportID, ReportType},
+    },
 };
 use usb_device::{bus::UsbBus, prelude::UsbError};
 
@@ -74,7 +76,7 @@ const SIMPLE_WHEEL_DESCRIPTOR: &[u8] = &[
     0x09, 0xC5, // USAGE (Brake)
     0x09, 0xC8, // USAGE (Steering)
     0x81, 0x02, // INPUT (Data,Var,Abs)
-    0xc0,       // END_COLLECTION (Physical) 
+    0xc0, // END_COLLECTION (Physical)
     0x05, 0x09, //   Usage Page (Button)
     0x19, 0x01, //   Usage Minimum (0x01)
     0x29, 0x08, //   Usage Maximum (0x08)
@@ -83,5 +85,5 @@ const SIMPLE_WHEEL_DESCRIPTOR: &[u8] = &[
     0x75, 0x01, //   Report Size (1)
     0x95, 0x08, //   Report Count (8)
     0x81, 0x02, //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,       // End Collection
+    0xC0, // End Collection
 ];

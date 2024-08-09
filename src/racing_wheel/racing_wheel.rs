@@ -1,11 +1,16 @@
-use crate::{
+use super::{
     descriptor::RACING_WHEEL_DESCRIPTOR,
-    fixed::{Frac16, FracU32},
-    hid::{GetReportInWriter, ReportWriter},
-    hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
-    misc::FixedSet,
-    ram_pool::{Effect, EffectParameter, RAMPool},
+    ram_pool::{Effect, RAMPool},
     reports::*,
+};
+use crate::{
+    fixed::{Frac16, FracU32},
+    misc::FixedSet,
+    racing_wheel::{ram_pool::EffectParameter, reports::EffectType},
+    usb::{
+        hid::{GetReportInWriter, ReportWriter},
+        hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
+    },
 };
 use usb_device::{bus::UsbBus, UsbError};
 

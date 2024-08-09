@@ -1,13 +1,13 @@
 use crate::{
-    descriptor::FORCE_LOGICAL_MAX,
     fixed::Fixed16,
-    hid_device::{HIDReport, HIDReportIn, HIDReportOut, HIDReportRAM, ReportID, ReportType},
     misc::{bitflag, bitflags, bits},
+    usb::hid_device::{HIDReport, HIDReportIn, HIDReportOut, HIDReportRAM, ReportID, ReportType},
 };
 use core::convert::{TryFrom, TryInto};
 
+pub const FORCE_LOGICAL_MAX: i32 = 10_000;
 pub type FixedSteering = Fixed16<360_0>;
-pub type FixedFFB = Fixed16<{FORCE_LOGICAL_MAX as u64}>;
+pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
 
 // Racing wheel report
 #[derive(Default, Clone)]

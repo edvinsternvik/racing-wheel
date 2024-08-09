@@ -1,4 +1,5 @@
-use crate::{hid_device::HIDReportRAM, reports::*};
+use super::reports::*;
+use crate::usb::hid_device::HIDReportRAM;
 use core::mem::{size_of, size_of_val};
 
 pub struct RAMPool<const MAX_EFFECTS: usize, const CUSTOM_DATA_BUFFER_SIZE: usize> {
@@ -25,9 +26,7 @@ impl<const MAX_EFFECTS: usize, const CUSTOM_DATA_BUFFER_SIZE: usize>
     }
 
     pub fn get_effect(&self, effect_block_index: u8) -> Option<&Effect> {
-        self.effects
-            .get(effect_block_index as usize - 1)?
-            .as_ref()
+        self.effects.get(effect_block_index as usize - 1)?.as_ref()
     }
 
     pub fn new_effect(&mut self) -> Option<u8> {
@@ -70,8 +69,8 @@ impl Effect {
         if let Some(effect) = self.effect_report {
             return match effect.effect_type {
                 EffectType::CustomForceData => self.parameter_1.is_some(),
-                _ => self.parameter_1.is_some() && self.parameter_2.is_some()
-            }
+                _ => self.parameter_1.is_some() && self.parameter_2.is_some(),
+            };
         }
         false
     }
