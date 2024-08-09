@@ -16,6 +16,12 @@ pub fn calculate_force_feedback(
 ) -> FixedFFB {
     use EffectParameter::*;
 
+    if let Some(duration) = effect.effect_report.map(|e| e.duration).flatten() {
+        if time > duration as u32 {
+            return 0.into();
+        }
+    }
+
     match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
         (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => constant_ffb(&e, &p1, &p2, time),
         (Some(e), Some(RampForce(p1)), Some(Envelope(p2))) => ramp_ffb(&e, &p1, &p2, time),
@@ -42,15 +48,17 @@ pub fn calculate_force_feedback(
 fn calculate_envelope(envelope: &SetEnvelopeReport, time: u32, duration: Option<u16>) -> FixedFFB {
     let mut result = FixedFFB::one();
     if time < envelope.attack_time {
-        let fade_force = envelope.attack_level * FracU32::new(time, envelope.attack_time);
+        let fade_force = envelope.attack_level
+            + (FixedFFB::one() - envelope.attack_level) * FracU32::new(time, envelope.attack_time);
         result = FixedFFB::min(result, fade_force);
     }
     if let Some(duration) = duration {
         let duration = duration as u32;
 
         if time <= duration && time + envelope.fade_time > duration {
-            let fade_force =
-                envelope.fade_level * FracU32::new(duration - time, envelope.fade_time);
+            let fade_force = envelope.fade_level
+                + (FixedFFB::one() - envelope.fade_level)
+                    * FracU32::new(duration - time, envelope.fade_time);
 
             result = FixedFFB::min(result, fade_force);
         }
