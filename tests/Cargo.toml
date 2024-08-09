@@ -1,0 +1,8 @@
+[package]
+name = "tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+force-feedback = { path = "../lib/force-feedback" }
+fixed-num = { path = "../lib/fixed-num" }
