@@ -4,6 +4,7 @@ mod racing_wheel_hid;
 mod ram_pool;
 
 use crate::misc::FixedSet;
+use fixed_num::Frac16;
 use force_feedback::{ffb::calculate_force_feedback, reports::*};
 use ram_pool::RAMPool;
 
@@ -34,7 +35,9 @@ impl RacingWheel {
             pid_state_report: PIDStateReport::default(),
             steering_prev: 0.into(),
             steering_velocity: 0.into(),
-            config: SetConfigReport::default(),
+            config: SetConfigReport {
+                gain: Frac16::new(1, 4).convert(),
+            },
         }
     }
 
@@ -69,7 +72,7 @@ impl RacingWheel {
             }
         }
 
-        total * self.device_gain
+        total * self.device_gain * self.config.gain
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
