@@ -2,6 +2,7 @@
 #![no_main]
 
 mod descriptor;
+mod fixed;
 mod hid;
 mod hid_device;
 mod misc;
@@ -10,12 +11,11 @@ mod racing_wheel;
 mod ram_pool;
 mod reports;
 mod simple_wheel;
-mod fixed;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
+use fixed::{Frac16, FracU16};
 use hid::HID;
-use misc::Signal;
 use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;
@@ -74,8 +74,10 @@ fn main() -> ! {
     let mut motor = Motor::new(motor_enable_pin.erase(), pwm_forward, pwm_reverse);
 
     // Setup buttons and analog input
-    let mut adc = Adc::adc1(dp.ADC1, clocks);
+    let mut adc_throttle = Adc::adc1(dp.ADC1, clocks);
+    let mut adc_brake = Adc::adc2(dp.ADC2, clocks);
     let mut analog_throttle_pin = gpioa.pa0.into_analog(&mut gpioa.crl);
+    let mut analog_brake_pin = gpioa.pa1.into_analog(&mut gpioa.crl);
 
     let button_a = gpioa.pa2.into_pull_down_input(&mut gpioa.crl);
     let button_b = gpioa.pa3.into_pull_down_input(&mut gpioa.crl);
@@ -110,18 +112,24 @@ fn main() -> ! {
 
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
-            let throttle_raw = Signal::<-10_000, 10_000>::new(
-                adc.read(&mut analog_throttle_pin).unwrap(),
-                0,
-                adc.max_sample() as i32,
+            let throttle_raw = FracU16::new(
+                adc_throttle.read(&mut analog_throttle_pin).unwrap(),
+                adc_throttle.max_sample(),
+            );
+            let brake_raw = FracU16::new(
+                adc_brake.read(&mut analog_brake_pin).unwrap(),
+                adc_brake.max_sample(),
             );
             let mut buttons = [false; 8];
             buttons[0] = button_a.is_high();
             buttons[1] = button_b.is_high();
 
-            racing_wheel
-                .get_device_mut()
-                .set_throttle((-(throttle_raw.value()) + 2047) as i16 * 16);
+            let t_val = if throttle_raw.value() > brake_raw.value() {
+                throttle_raw.value() as i16
+            } else {
+                -(brake_raw.value() as i16)
+            };
+            racing_wheel.get_device_mut().set_throttle(t_val);
             racing_wheel
                 .get_device_mut()
                 .set_steering(steering_raw.into());
