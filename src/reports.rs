@@ -1,14 +1,19 @@
 use crate::{
+    descriptor::FORCE_LOGICAL_MAX,
+    fixed::Fixed16,
     hid_device::{HIDReport, HIDReportIn, HIDReportOut, HIDReportRAM, ReportID, ReportType},
     misc::{bitflag, bitflags, bits},
 };
 use core::convert::{TryFrom, TryInto};
 
+pub type FixedSteering = Fixed16<360_0>;
+pub type FixedFFB = Fixed16<{FORCE_LOGICAL_MAX as u64}>;
+
 // Racing wheel report
 #[derive(Default, Clone)]
 pub struct RacingWheelReport {
     pub buttons: [bool; 8],
-    pub steering: i16,
+    pub steering: FixedSteering,
     pub throttle: i16,
 }
 
@@ -21,8 +26,8 @@ impl HIDReportIn<6> for RacingWheelReport {
         [
             Self::ID.1,
             bitflags(&self.buttons),
-            self.steering.to_le_bytes()[0],
-            self.steering.to_le_bytes()[1],
+            self.steering.value().to_le_bytes()[0],
+            self.steering.value().to_le_bytes()[1],
             self.throttle.to_le_bytes()[0],
             self.throttle.to_le_bytes()[1],
         ]
@@ -69,7 +74,7 @@ pub struct SetEffectReport {
     pub duration: Option<u16>,
     pub trigger_repeat_interval: u16,
     pub sample_period: Option<u16>,
-    pub gain: u8,
+    pub gain: FixedFFB,
     pub trigger_button: u8,
     pub axis_x_enable: bool,
     pub axis_y_enable: bool,
@@ -91,7 +96,7 @@ impl HIDReportOut for SetEffectReport {
     }
 }
 
-impl HIDReportRAM<18> for SetEffectReport {
+impl HIDReportRAM<19> for SetEffectReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         let duration = u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]);
         let sample_period = u16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]);
@@ -109,26 +114,26 @@ impl HIDReportRAM<18> for SetEffectReport {
             } else {
                 Some(sample_period)
             },
-            gain: *ram.get(7)?,
-            trigger_button: *ram.get(8)?,
-            axis_x_enable: bitflag(*ram.get(9)?, 0),
-            axis_y_enable: bitflag(*ram.get(9)?, 1),
-            direction_enable: bitflag(*ram.get(9)?, 2),
-            direction_instance_1: *ram.get(10)?,
-            direction_instance_2: *ram.get(11)?,
-            start_delay: u16::from_le_bytes([*ram.get(12)?, *ram.get(13)?]),
+            gain: i16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]).into(),
+            trigger_button: *ram.get(9)?,
+            axis_x_enable: bitflag(*ram.get(10)?, 0),
+            axis_y_enable: bitflag(*ram.get(10)?, 1),
+            direction_enable: bitflag(*ram.get(10)?, 2),
+            direction_instance_1: *ram.get(11)?,
+            direction_instance_2: *ram.get(12)?,
+            start_delay: u16::from_le_bytes([*ram.get(13)?, *ram.get(14)?]),
             type_specific_block_offset_instance_1: u16::from_le_bytes([
-                *ram.get(14)?,
                 *ram.get(15)?,
+                *ram.get(16)?,
             ]),
             type_specific_block_offset_instance_2: u16::from_le_bytes([
-                *ram.get(16)?,
                 *ram.get(17)?,
+                *ram.get(18)?,
             ]),
         })
     }
 
-    fn to_ram(&self) -> [u8; 18] {
+    fn to_ram(&self) -> [u8; 19] {
         [
             self.effect_type as u8,
             self.duration.unwrap_or_default().to_le_bytes()[0],
@@ -137,7 +142,8 @@ impl HIDReportRAM<18> for SetEffectReport {
             self.trigger_repeat_interval.to_le_bytes()[1],
             self.sample_period.unwrap_or_default().to_le_bytes()[0],
             self.sample_period.unwrap_or_default().to_le_bytes()[1],
-            self.gain,
+            self.gain.value().to_le_bytes()[0],
+            self.gain.value().to_le_bytes()[1],
             self.trigger_button,
             bitflags(&[
                 self.axis_x_enable,
@@ -198,8 +204,8 @@ impl TryFrom<u8> for EffectType {
 #[derive(Clone, Copy)]
 pub struct SetEnvelopeReport {
     pub effect_block_index: u8,
-    pub attack_level: u16,
-    pub fade_level: u16,
+    pub attack_level: FixedFFB,
+    pub fade_level: FixedFFB,
     pub attack_time: u32,
     pub fade_time: u32,
 }
@@ -218,8 +224,8 @@ impl HIDReportRAM<12> for SetEnvelopeReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            attack_level: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
-            fade_level: u16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
+            attack_level: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
+            fade_level: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
             attack_time: u32::from_le_bytes([
                 *ram.get(4)?,
                 *ram.get(5)?,
@@ -237,10 +243,10 @@ impl HIDReportRAM<12> for SetEnvelopeReport {
 
     fn to_ram(&self) -> [u8; 12] {
         [
-            self.attack_level.to_le_bytes()[0],
-            self.attack_level.to_le_bytes()[1],
-            self.fade_level.to_le_bytes()[0],
-            self.fade_level.to_le_bytes()[1],
+            self.attack_level.value().to_le_bytes()[0],
+            self.attack_level.value().to_le_bytes()[1],
+            self.fade_level.value().to_le_bytes()[0],
+            self.fade_level.value().to_le_bytes()[1],
             self.attack_time.to_le_bytes()[0],
             self.attack_time.to_le_bytes()[1],
             self.attack_time.to_le_bytes()[2],
@@ -260,12 +266,12 @@ pub struct SetConditionReport {
     pub parameter_block_offset: u8,
     pub type_specific_block_offset_instance_1: u8,
     pub type_specific_block_offset_instance_2: u8,
-    pub cp_offset: i16,
-    pub positive_coefficient: i16,
-    pub negative_coefficient: i16,
-    pub positive_saturation: u16,
-    pub negative_saturation: u16,
-    pub dead_band: u16,
+    pub cp_offset: FixedFFB,
+    pub positive_coefficient: FixedFFB,
+    pub negative_coefficient: FixedFFB,
+    pub positive_saturation: FixedFFB,
+    pub negative_saturation: FixedFFB,
+    pub dead_band: FixedFFB,
 }
 
 impl HIDReport for SetConditionReport {
@@ -285,12 +291,12 @@ impl HIDReportRAM<13> for SetConditionReport {
             parameter_block_offset: bits(*ram.get(0)?, 0, 4),
             type_specific_block_offset_instance_1: bits(*ram.get(0)?, 4, 2),
             type_specific_block_offset_instance_2: bits(*ram.get(0)?, 6, 2),
-            cp_offset: i16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
-            positive_coefficient: i16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]),
-            negative_coefficient: i16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]),
-            positive_saturation: u16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]),
-            negative_saturation: u16::from_le_bytes([*ram.get(9)?, *ram.get(10)?]),
-            dead_band: u16::from_le_bytes([*ram.get(11)?, *ram.get(12)?]),
+            cp_offset: i16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]).into(),
+            positive_coefficient: i16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]).into(),
+            negative_coefficient: i16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]).into(),
+            positive_saturation: i16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]).into(),
+            negative_saturation: i16::from_le_bytes([*ram.get(9)?, *ram.get(10)?]).into(),
+            dead_band: i16::from_le_bytes([*ram.get(11)?, *ram.get(12)?]).into(),
         })
     }
 
@@ -299,18 +305,18 @@ impl HIDReportRAM<13> for SetConditionReport {
             (self.parameter_block_offset & 0b1111) << 0
                 | (self.type_specific_block_offset_instance_1 & 0b11) << 4
                 | (self.type_specific_block_offset_instance_2 & 0b11) << 6,
-            self.cp_offset.to_le_bytes()[0],
-            self.cp_offset.to_le_bytes()[1],
-            self.positive_coefficient.to_le_bytes()[0],
-            self.positive_coefficient.to_le_bytes()[1],
-            self.negative_coefficient.to_le_bytes()[0],
-            self.negative_coefficient.to_le_bytes()[1],
-            self.positive_saturation.to_le_bytes()[0],
-            self.positive_saturation.to_le_bytes()[1],
-            self.negative_saturation.to_le_bytes()[0],
-            self.negative_saturation.to_le_bytes()[1],
-            self.dead_band.to_le_bytes()[0],
-            self.dead_band.to_le_bytes()[1],
+            self.cp_offset.value().to_le_bytes()[0],
+            self.cp_offset.value().to_le_bytes()[1],
+            self.positive_coefficient.value().to_le_bytes()[0],
+            self.positive_coefficient.value().to_le_bytes()[1],
+            self.negative_coefficient.value().to_le_bytes()[0],
+            self.negative_coefficient.value().to_le_bytes()[1],
+            self.positive_saturation.value().to_le_bytes()[0],
+            self.positive_saturation.value().to_le_bytes()[1],
+            self.negative_saturation.value().to_le_bytes()[0],
+            self.negative_saturation.value().to_le_bytes()[1],
+            self.dead_band.value().to_le_bytes()[0],
+            self.dead_band.value().to_le_bytes()[1],
         ]
     }
 }
@@ -319,8 +325,8 @@ impl HIDReportRAM<13> for SetConditionReport {
 #[derive(Clone, Copy)]
 pub struct SetPeriodicReport {
     pub effect_block_index: u8,
-    pub magnitude: u16,
-    pub offset: i16,
+    pub magnitude: FixedFFB,
+    pub offset: FixedFFB,
     pub phase: u16,
     pub period: u32,
 }
@@ -339,8 +345,8 @@ impl HIDReportRAM<10> for SetPeriodicReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            magnitude: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
-            offset: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
+            magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
+            offset: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
             phase: u16::from_le_bytes([*ram.get(4)?, *ram.get(5)?]),
             period: u32::from_le_bytes([*ram.get(6)?, *ram.get(7)?, *ram.get(8)?, *ram.get(9)?]),
         })
@@ -348,10 +354,10 @@ impl HIDReportRAM<10> for SetPeriodicReport {
 
     fn to_ram(&self) -> [u8; 10] {
         [
-            self.magnitude.to_le_bytes()[0],
-            self.magnitude.to_le_bytes()[1],
-            self.offset.to_le_bytes()[0],
-            self.offset.to_le_bytes()[1],
+            self.magnitude.value().to_le_bytes()[0],
+            self.magnitude.value().to_le_bytes()[1],
+            self.offset.value().to_le_bytes()[0],
+            self.offset.value().to_le_bytes()[1],
             self.phase.to_le_bytes()[0],
             self.phase.to_le_bytes()[1],
             self.period.to_le_bytes()[0],
@@ -366,7 +372,7 @@ impl HIDReportRAM<10> for SetPeriodicReport {
 #[derive(Clone, Copy)]
 pub struct SetConstantForceReport {
     pub effect_block_index: u8,
-    pub magnitude: i16,
+    pub magnitude: FixedFFB,
 }
 
 impl HIDReport for SetConstantForceReport {
@@ -383,14 +389,14 @@ impl HIDReportRAM<2> for SetConstantForceReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
+            magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
         })
     }
 
     fn to_ram(&self) -> [u8; 2] {
         [
-            self.magnitude.to_le_bytes()[0],
-            self.magnitude.to_le_bytes()[1],
+            self.magnitude.value().to_le_bytes()[0],
+            self.magnitude.value().to_le_bytes()[1],
         ]
     }
 }
@@ -399,8 +405,8 @@ impl HIDReportRAM<2> for SetConstantForceReport {
 #[derive(Clone, Copy)]
 pub struct SetRampForceReport {
     pub effect_block_index: u8,
-    pub ramp_start: i16,
-    pub ramp_end: i16,
+    pub ramp_start: FixedFFB,
+    pub ramp_end: FixedFFB,
 }
 
 impl HIDReport for SetRampForceReport {
@@ -417,17 +423,17 @@ impl HIDReportRAM<4> for SetRampForceReport {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Self {
             effect_block_index,
-            ramp_start: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
-            ramp_end: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]),
+            ramp_start: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
+            ramp_end: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
         })
     }
 
     fn to_ram(&self) -> [u8; 4] {
         [
-            self.ramp_start.to_le_bytes()[0],
-            self.ramp_start.to_le_bytes()[1],
-            self.ramp_end.to_le_bytes()[0],
-            self.ramp_end.to_le_bytes()[1],
+            self.ramp_start.value().to_le_bytes()[0],
+            self.ramp_start.value().to_le_bytes()[1],
+            self.ramp_end.value().to_le_bytes()[0],
+            self.ramp_end.value().to_le_bytes()[1],
         ]
     }
 }
@@ -609,7 +615,7 @@ impl TryFrom<u8> for DeviceControl {
 // Device Gain Report
 #[derive(Clone, Copy)]
 pub struct DeviceGainReport {
-    pub device_gain: u8,
+    pub device_gain: FixedFFB,
 }
 
 impl HIDReport for DeviceGainReport {
@@ -619,7 +625,7 @@ impl HIDReport for DeviceGainReport {
 impl HIDReportOut for DeviceGainReport {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Self {
-            device_gain: *bytes.get(1)?,
+            device_gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
         })
     }
 }

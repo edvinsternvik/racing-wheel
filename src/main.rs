@@ -10,6 +10,7 @@ mod racing_wheel;
 mod ram_pool;
 mod reports;
 mod simple_wheel;
+mod fixed;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
@@ -123,14 +124,13 @@ fn main() -> ! {
                 .set_throttle((-(throttle_raw.value()) + 2047) as i16 * 16);
             racing_wheel
                 .get_device_mut()
-                .set_steering(((steering_raw as i32 * 3) / 2) as i16);
+                .set_steering(steering_raw.into());
             racing_wheel.get_device_mut().set_buttons(buttons);
 
-            //let ffb = racing_wheel.get_device().get_force_feedback();
+            let ffb = racing_wheel.get_device().get_force_feedback();
             racing_wheel.get_device_mut().advance(10);
 
-            //motor.set_speed(ffb, FORCE_LOGICAL_MAX);
-            motor.set_speed(throttle_raw);
+            motor.set_speed(ffb);
 
             racing_wheel.send_input_reports();
         }
