@@ -1,8 +1,10 @@
 #![no_std]
 
-use fixed::{Fixed, Frac};
+use fixed::Fixed;
+use fractional::Frac;
 
 pub mod fixed;
+pub mod fractional;
 
 pub type Fixed16<const N: u64> = Fixed<N, i16>;
 pub type FixedU16<const N: u64> = Fixed<N, u16>;
