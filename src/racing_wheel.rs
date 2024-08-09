@@ -43,7 +43,7 @@ impl RacingWheel {
         self.racing_wheel_report.steering = steering;
     }
 
-    pub fn set_throttle(&mut self, throttle: i16) {
+    pub fn set_throttle(&mut self, throttle: FixedFFB) {
         self.racing_wheel_report.throttle = throttle;
     }
 

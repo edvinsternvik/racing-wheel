@@ -9,7 +9,7 @@ mod usb;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use fixed_num::FracU16;
+use fixed_num::Frac16;
 use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;
@@ -107,27 +107,19 @@ fn main() -> ! {
 
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
-            let throttle_raw = FracU16::new(
-                adc_throttle.read(&mut analog_throttle_pin).unwrap(),
-                adc_throttle.max_sample(),
-            );
-            let brake_raw = FracU16::new(
-                adc_brake.read(&mut analog_brake_pin).unwrap(),
-                adc_brake.max_sample(),
-            );
+            let throttle_raw: u16 = adc_throttle.read(&mut analog_throttle_pin).unwrap();
+            let brake_raw: u16 = adc_brake.read(&mut analog_brake_pin).unwrap();
             let mut buttons = [false; 8];
             buttons[0] = button_a.is_high();
             buttons[1] = button_b.is_high();
 
-            let t_val = if throttle_raw.value() > brake_raw.value() {
-                throttle_raw.value() as i16
-            } else {
-                -(brake_raw.value() as i16)
-            };
-            racing_wheel.get_device_mut().set_throttle(t_val);
-            racing_wheel
-                .get_device_mut()
-                .set_steering(steering_raw.into());
+            let steering = steering_raw.into();
+            let throttle = Frac16::new(throttle_raw as i16, adc_throttle.max_sample() as i16);
+            let brake = Frac16::new(brake_raw as i16, adc_brake.max_sample() as i16);
+
+            let t_val = if throttle > brake { throttle } else { -brake };
+            racing_wheel.get_device_mut().set_throttle(t_val.convert());
+            racing_wheel.get_device_mut().set_steering(steering);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
             let ffb = racing_wheel.get_device().get_force_feedback();

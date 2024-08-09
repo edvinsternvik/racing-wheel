@@ -16,8 +16,8 @@ impl HIDReportIn<6> for RacingWheelReport {
             bitflags(&self.buttons),
             self.steering.value().to_le_bytes()[0],
             self.steering.value().to_le_bytes()[1],
-            self.throttle.to_le_bytes()[0],
-            self.throttle.to_le_bytes()[1],
+            self.throttle.value().to_le_bytes()[0],
+            self.throttle.value().to_le_bytes()[1],
         ]
     }
 }

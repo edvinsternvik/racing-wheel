@@ -20,8 +20,10 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     
     0x05, 0x02,        //     USAGE_PAGE (Simulation Controls)
-    0x16, 0x01, 0x80,  //     Logical Minimum (-32767)
-    0x26, 0xFF, 0x7F,  //     Logical Maximum (32767)
+    0x16, 0xF0, 0xD8,  //     Logical Minimum (-10000)
+    0x26, 0x10, 0x27,  //     Logical Maximum (10000)
+    0x36, 0xF0, 0xD8,  //     Physical Minimum (-10000)
+    0x46, 0x10, 0x27,  //     Physical Maximum (10000)
     0x75, 0x10,        //     Report Size (16)
     0x95, 0x02,        //     Report Count (2)
     0x66, 0x44, 0x00,  //     Unit (System: English Rotation, Length: Degrees)

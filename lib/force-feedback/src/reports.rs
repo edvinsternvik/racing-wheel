@@ -1,7 +1,7 @@
 use fixed_num::Fixed16;
 
 pub const FORCE_LOGICAL_MAX: i32 = 10_000;
-pub type FixedSteering = Fixed16<360_0>;
+pub type FixedSteering = Fixed16<2400>;
 pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
 
 // Racing wheel report
@@ -9,7 +9,7 @@ pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
 pub struct RacingWheelReport {
     pub buttons: [bool; 8],
     pub steering: FixedSteering,
-    pub throttle: i16,
+    pub throttle: FixedFFB,
 }
 
 // PID State Report
