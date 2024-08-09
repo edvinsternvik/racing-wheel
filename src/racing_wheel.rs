@@ -40,6 +40,7 @@ pub struct RacingWheel {
     pid_state_report: PIDStateReport,
     steering_prev: FixedSteering,
     steering_velocity: FixedSteering,
+    config: SetConfigReport,
 }
 
 impl RacingWheel {
@@ -53,6 +54,7 @@ impl RacingWheel {
             pid_state_report: PIDStateReport::default(),
             steering_prev: 0.into(),
             steering_velocity: 0.into(),
+            config: SetConfigReport::default(),
         }
     }
 
@@ -481,6 +483,10 @@ impl HIDDeviceType for RacingWheel {
             CreateNewEffectReport::ID => {
                 let report = CreateNewEffectReport::into_report(data).ok_or(())?;
                 self.next_effect = Some(report);
+                Ok(Some(true))
+            }
+            SetConfigReport::ID => {
+                self.config = SetConfigReport::into_report(data).ok_or(())?;
                 Ok(Some(true))
             }
             _ => Ok(None),

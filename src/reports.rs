@@ -783,3 +783,21 @@ impl HIDReportIn<12> for PIDPoolReport {
         ]
     }
 }
+
+// Set Configuration Report
+#[derive(Clone, Copy, Default)]
+pub struct SetConfigReport {
+    gain: FixedFFB,
+}
+
+impl HIDReport for SetConfigReport {
+    const ID: ReportID = ReportID(ReportType::Feature, 0x04);
+}
+
+impl HIDReportOut for SetConfigReport {
+    fn into_report(bytes: &[u8]) -> Option<Self> {
+        Some(Self {
+            gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
+        })
+    }
+}
