@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-mod fixed;
 mod misc;
 mod motor;
 mod racing_wheel;
@@ -10,7 +9,7 @@ mod usb;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use fixed::FracU16;
+use fixed_num::FracU16;
 use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;

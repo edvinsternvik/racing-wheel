@@ -1,5 +1,5 @@
-use crate::fixed::Fixed;
 use cortex_m::prelude::*;
+use fixed_num::fixed::Fixed;
 use stm32f1xx_hal::gpio::*;
 
 const MOTOR_SIGNAL_MAX: i16 = 10_000;

@@ -3,9 +3,6 @@ use core::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-pub type Fixed16<const N: u64> = Fixed<N, i16>;
-pub type FixedU16<const N: u64> = Fixed<N, u16>;
-
 #[derive(Clone, Copy, Default, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Fixed<const N: u64, T>(T);
 
@@ -102,10 +99,6 @@ where
         Self::new(self.value() * rhs)
     }
 }
-
-pub type Frac16 = Frac<i16>;
-pub type FracU16 = Frac<u16>;
-pub type FracU32 = Frac<u32>;
 
 #[derive(Clone, Copy, Default)]
 pub struct Frac<T>(T, T);

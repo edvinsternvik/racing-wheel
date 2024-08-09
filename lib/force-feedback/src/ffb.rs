@@ -1,11 +1,11 @@
-use super::{
-    ram_pool::Effect, FixedFFB, FixedSteering, SetConditionReport, SetConstantForceReport,
-    SetEffectReport, SetEnvelopeReport, SetPeriodicReport, SetRampForceReport,
-};
 use crate::{
-    fixed::{Frac16, FracU32},
-    racing_wheel::{ram_pool::EffectParameter, reports::EffectType},
+    effect::{Effect, EffectParameter},
+    reports::{
+        EffectType, FixedFFB, FixedSteering, SetConditionReport, SetConstantForceReport,
+        SetEffectReport, SetEnvelopeReport, SetPeriodicReport, SetRampForceReport,
+    },
 };
+use fixed_num::{Frac16, FracU32};
 
 pub fn calculate_force_feedback(
     effect: &Effect,

@@ -1,21 +1,9 @@
 use crate::{
-    fixed::Fixed16,
     misc::{bitflag, bitflags, bits},
     usb::hid_device::{HIDReport, HIDReportIn, HIDReportOut, HIDReportRAM, ReportID, ReportType},
 };
 use core::convert::{TryFrom, TryInto};
-
-pub const FORCE_LOGICAL_MAX: i32 = 10_000;
-pub type FixedSteering = Fixed16<360_0>;
-pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
-
-// Racing wheel report
-#[derive(Default, Clone)]
-pub struct RacingWheelReport {
-    pub buttons: [bool; 8],
-    pub steering: FixedSteering,
-    pub throttle: i16,
-}
+use force_feedback::reports::*;
 
 impl HIDReport for RacingWheelReport {
     const ID: ReportID = ReportID(ReportType::Input, 0x01);
@@ -32,18 +20,6 @@ impl HIDReportIn<6> for RacingWheelReport {
             self.throttle.to_le_bytes()[1],
         ]
     }
-}
-
-// PID State Report
-#[derive(Default, Clone)]
-pub struct PIDStateReport {
-    pub device_paused: bool,
-    pub actuators_enabled: bool,
-    pub safety_switch: bool,
-    pub actuators_override_switch: bool,
-    pub actuator_power: bool,
-    pub effect_playing: bool,
-    pub effect_block_index: u8,
 }
 
 impl HIDReport for PIDStateReport {
@@ -64,26 +40,6 @@ impl HIDReportIn<3> for PIDStateReport {
             bitflags(&[self.effect_playing]) | (self.effect_block_index << 1),
         ]
     }
-}
-
-// Set Effect Report
-#[derive(Clone, Copy)]
-pub struct SetEffectReport {
-    pub effect_block_index: u8,
-    pub effect_type: EffectType,
-    pub duration: Option<u16>,
-    pub trigger_repeat_interval: u16,
-    pub sample_period: Option<u16>,
-    pub gain: FixedFFB,
-    pub trigger_button: u8,
-    pub axis_x_enable: bool,
-    pub axis_y_enable: bool,
-    pub direction_enable: bool,
-    pub direction_instance_1: u8,
-    pub direction_instance_2: u8,
-    pub start_delay: u16,
-    pub type_specific_block_offset_instance_1: u16,
-    pub type_specific_block_offset_instance_2: u16,
 }
 
 impl HIDReport for SetEffectReport {
@@ -162,54 +118,6 @@ impl HIDReportRAM<19> for SetEffectReport {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum EffectType {
-    ConstantForce = 1,
-    Ramp = 2,
-    Square = 3,
-    Sine = 4,
-    Triangle = 5,
-    SawtoothUp = 6,
-    SawtoothDown = 7,
-    Spring = 8,
-    Damper = 9,
-    Inertia = 10,
-    Friction = 11,
-    CustomForceData = 12,
-}
-
-impl TryFrom<u8> for EffectType {
-    type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use EffectType::*;
-        match value {
-            x if x == ConstantForce as u8 => Ok(ConstantForce),
-            x if x == Ramp as u8 => Ok(Ramp),
-            x if x == Square as u8 => Ok(Square),
-            x if x == Sine as u8 => Ok(Sine),
-            x if x == Triangle as u8 => Ok(Triangle),
-            x if x == SawtoothUp as u8 => Ok(SawtoothUp),
-            x if x == SawtoothDown as u8 => Ok(SawtoothDown),
-            x if x == Spring as u8 => Ok(Spring),
-            x if x == Damper as u8 => Ok(Damper),
-            x if x == Inertia as u8 => Ok(Inertia),
-            x if x == Friction as u8 => Ok(Friction),
-            x if x == CustomForceData as u8 => Ok(CustomForceData),
-            _ => Err(()),
-        }
-    }
-}
-
-// Set Envelope Report
-#[derive(Clone, Copy)]
-pub struct SetEnvelopeReport {
-    pub effect_block_index: u8,
-    pub attack_level: FixedFFB,
-    pub fade_level: FixedFFB,
-    pub attack_time: u32,
-    pub fade_time: u32,
-}
-
 impl HIDReport for SetEnvelopeReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x02);
 }
@@ -259,21 +167,6 @@ impl HIDReportRAM<12> for SetEnvelopeReport {
     }
 }
 
-// Set Condition Report
-#[derive(Clone, Copy)]
-pub struct SetConditionReport {
-    pub effect_block_index: u8,
-    pub parameter_block_offset: u8,
-    pub type_specific_block_offset_instance_1: u8,
-    pub type_specific_block_offset_instance_2: u8,
-    pub cp_offset: FixedFFB,
-    pub positive_coefficient: FixedFFB,
-    pub negative_coefficient: FixedFFB,
-    pub positive_saturation: FixedFFB,
-    pub negative_saturation: FixedFFB,
-    pub dead_band: FixedFFB,
-}
-
 impl HIDReport for SetConditionReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x03);
 }
@@ -321,16 +214,6 @@ impl HIDReportRAM<13> for SetConditionReport {
     }
 }
 
-// Set Periodic Report
-#[derive(Clone, Copy)]
-pub struct SetPeriodicReport {
-    pub effect_block_index: u8,
-    pub magnitude: FixedFFB,
-    pub offset: FixedFFB,
-    pub phase: u16,
-    pub period: u32,
-}
-
 impl HIDReport for SetPeriodicReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x04);
 }
@@ -368,13 +251,6 @@ impl HIDReportRAM<10> for SetPeriodicReport {
     }
 }
 
-// Set Constant Force Report
-#[derive(Clone, Copy)]
-pub struct SetConstantForceReport {
-    pub effect_block_index: u8,
-    pub magnitude: FixedFFB,
-}
-
 impl HIDReport for SetConstantForceReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x05);
 }
@@ -399,14 +275,6 @@ impl HIDReportRAM<2> for SetConstantForceReport {
             self.magnitude.value().to_le_bytes()[1],
         ]
     }
-}
-
-// Set Ramp Force Report
-#[derive(Clone, Copy)]
-pub struct SetRampForceReport {
-    pub effect_block_index: u8,
-    pub ramp_start: FixedFFB,
-    pub ramp_end: FixedFFB,
 }
 
 impl HIDReport for SetRampForceReport {
@@ -436,15 +304,6 @@ impl HIDReportRAM<4> for SetRampForceReport {
             self.ramp_end.value().to_le_bytes()[1],
         ]
     }
-}
-
-// Custom Force Data Report
-#[derive(Clone, Copy)]
-pub struct CustomForceDataReport {
-    pub effect_block_index: u8,
-    pub custom_force_data_offset: u16,
-    pub byte_count: u8,
-    pub custom_force_data: [u8; 12],
 }
 
 impl HIDReport for CustomForceDataReport {
@@ -488,13 +347,6 @@ impl HIDReportRAM<15> for CustomForceDataReport {
     }
 }
 
-// Download Force Sample
-#[derive(Clone, Copy)]
-pub struct DownloadForceSample {
-    pub steering: i8,
-    pub throttle: u8,
-}
-
 impl HIDReport for DownloadForceSample {
     const ID: ReportID = ReportID(ReportType::Output, 0x08);
 }
@@ -506,14 +358,6 @@ impl HIDReportOut for DownloadForceSample {
             throttle: *bytes.get(2)?,
         })
     }
-}
-
-// Effect Operation Report
-#[derive(Clone, Copy)]
-pub struct EffectOperationReport {
-    pub effect_block_index: u8,
-    pub effect_operation: EffectOperation,
-    pub loop_count: u8,
 }
 
 impl HIDReport for EffectOperationReport {
@@ -530,32 +374,6 @@ impl HIDReportOut for EffectOperationReport {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum EffectOperation {
-    EffectStart = 1,
-    EffectStartSolo = 2,
-    EffectStop = 3,
-}
-
-impl TryFrom<u8> for EffectOperation {
-    type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use EffectOperation::*;
-        match value {
-            x if x == EffectStart as u8 => Ok(EffectStart),
-            x if x == EffectStartSolo as u8 => Ok(EffectStartSolo),
-            x if x == EffectStop as u8 => Ok(EffectStop),
-            _ => Err(()),
-        }
-    }
-}
-
-// PID Block Free Report
-#[derive(Clone, Copy)]
-pub struct PIDBlockFreeReport {
-    pub effect_block_index: u8,
-}
-
 impl HIDReport for PIDBlockFreeReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x0B);
 }
@@ -566,12 +384,6 @@ impl HIDReportOut for PIDBlockFreeReport {
             effect_block_index: *bytes.get(1)?,
         })
     }
-}
-
-// PID Device Control
-#[derive(Clone, Copy)]
-pub struct PIDDeviceControl {
-    pub device_control: DeviceControl,
 }
 
 impl HIDReport for PIDDeviceControl {
@@ -585,39 +397,6 @@ impl HIDReportOut for PIDDeviceControl {
         })
     }
 }
-
-#[derive(Clone, Copy)]
-pub enum DeviceControl {
-    EnableActuators = 1,
-    DisableActuators = 2,
-    StopAllEffects = 3,
-    DeviceReset = 4,
-    DevicePause = 5,
-    DeviceContinue = 6,
-}
-
-impl TryFrom<u8> for DeviceControl {
-    type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use DeviceControl::*;
-        match value {
-            x if x == EnableActuators as u8 => Ok(EnableActuators),
-            x if x == DisableActuators as u8 => Ok(DisableActuators),
-            x if x == StopAllEffects as u8 => Ok(StopAllEffects),
-            x if x == DeviceReset as u8 => Ok(DeviceReset),
-            x if x == DevicePause as u8 => Ok(DevicePause),
-            x if x == DeviceContinue as u8 => Ok(DeviceContinue),
-            _ => Err(()),
-        }
-    }
-}
-
-// Device Gain Report
-#[derive(Clone, Copy)]
-pub struct DeviceGainReport {
-    pub device_gain: FixedFFB,
-}
-
 impl HIDReport for DeviceGainReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x0D);
 }
@@ -628,14 +407,6 @@ impl HIDReportOut for DeviceGainReport {
             device_gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
         })
     }
-}
-
-// Set Custom Force Report
-#[derive(Clone, Copy)]
-pub struct SetCustomForceReport {
-    pub effect_block_index: u8,
-    pub custom_force_data_offset: u16,
-    pub sample_count: u16,
 }
 
 impl HIDReport for SetCustomForceReport {
@@ -667,14 +438,6 @@ impl HIDReportRAM<4> for SetCustomForceReport {
     }
 }
 
-// PID Pool Move Report
-#[derive(Clone, Copy)]
-pub struct PIDPoolMoveReport {
-    pub move_source: u16,
-    pub move_destination: u16,
-    pub move_length: u16,
-}
-
 impl HIDReport for PIDPoolMoveReport {
     const ID: ReportID = ReportID(ReportType::Output, 0x0F);
 }
@@ -689,13 +452,6 @@ impl HIDReportOut for PIDPoolMoveReport {
     }
 }
 
-// Create New Effect Report
-#[derive(Clone, Copy)]
-pub struct CreateNewEffectReport {
-    pub effect_type: EffectType,
-    pub byte_count: u16,
-}
-
 impl HIDReport for CreateNewEffectReport {
     const ID: ReportID = ReportID(ReportType::Feature, 0x01);
 }
@@ -707,14 +463,6 @@ impl HIDReportOut for CreateNewEffectReport {
             byte_count: u16::from_le_bytes([*bytes.get(2)?, *bytes.get(3)?]),
         })
     }
-}
-
-// PID Block Load Report
-#[derive(Clone, Copy)]
-pub struct PIDBlockLoadReport {
-    pub effect_block_index: u8,
-    pub block_load_status: BlockLoadStatus,
-    pub ram_pool_available: u16,
 }
 
 impl HIDReport for PIDBlockLoadReport {
@@ -731,30 +479,6 @@ impl HIDReportIn<5> for PIDBlockLoadReport {
             self.ram_pool_available.to_le_bytes()[1],
         ]
     }
-}
-
-#[derive(Clone, Copy)]
-pub enum BlockLoadStatus {
-    Success = 0x01,
-    Full = 0x02,
-    Error = 0x03,
-}
-
-// PID Pool Report
-#[derive(Clone, Copy)]
-pub struct PIDPoolReport {
-    pub ram_pool_size: u16,
-    pub simultaneous_effects_max: u8,
-    pub param_block_size_set_effect: u8,
-    pub param_block_size_set_envelope: u8,
-    pub param_block_size_set_condition: u8,
-    pub param_block_size_set_periodic: u8,
-    pub param_block_size_set_constant_force: u8,
-    pub param_block_size_set_ramp_force: u8,
-    pub param_block_size_set_custom_force: u8,
-    pub device_managed_pool: bool,
-    pub shared_parameter_blocks: bool,
-    pub isochronous_enable: bool,
 }
 
 impl HIDReport for PIDPoolReport {
@@ -782,12 +506,6 @@ impl HIDReportIn<12> for PIDPoolReport {
             ]),
         ]
     }
-}
-
-// Set Configuration Report
-#[derive(Clone, Copy, Default)]
-pub struct SetConfigReport {
-    gain: FixedFFB,
 }
 
 impl HIDReport for SetConfigReport {

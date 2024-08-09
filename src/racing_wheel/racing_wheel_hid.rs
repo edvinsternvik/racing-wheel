@@ -1,15 +1,14 @@
 use super::{
-    descriptor::RACING_WHEEL_DESCRIPTOR, reports::*, RacingWheel, RunningEffect,
-    MAX_SIMULTANEOUS_EFFECTS,
+    descriptor::RACING_WHEEL_DESCRIPTOR, RacingWheel, RunningEffect, MAX_SIMULTANEOUS_EFFECTS,
 };
 use crate::{
     misc::FixedSet,
-    racing_wheel::ram_pool::EffectParameter,
     usb::{
         hid::{GetReportInWriter, ReportWriter},
         hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
     },
 };
+use force_feedback::{effect::EffectParameter, reports::*};
 use usb_device::{bus::UsbBus, UsbError};
 
 impl HIDDeviceType for RacingWheel {

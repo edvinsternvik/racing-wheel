@@ -1,13 +1,11 @@
 mod descriptor;
-mod ffb;
+mod hid_reports;
 mod racing_wheel_hid;
 mod ram_pool;
-mod reports;
 
 use crate::misc::FixedSet;
-use ffb::calculate_force_feedback;
+use force_feedback::{ffb::calculate_force_feedback, reports::*};
 use ram_pool::RAMPool;
-use reports::*;
 
 const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
 const MAX_EFFECTS: usize = 16;
@@ -119,4 +117,3 @@ impl RunningEffect {
         Self { index, time: 0 }
     }
 }
-
