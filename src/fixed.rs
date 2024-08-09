@@ -4,6 +4,7 @@ use core::{
 };
 
 pub type Fixed16<const N: u64> = Fixed<N, i16>;
+pub type FixedU16<const N: u64> = Fixed<N, u16>;
 
 #[derive(Clone, Copy, Default, Ord, Eq, PartialEq, PartialOrd)]
 pub struct Fixed<const N: u64, T>(T);
@@ -103,6 +104,7 @@ where
 }
 
 pub type Frac16 = Frac<i16>;
+pub type FracU16 = Frac<u16>;
 pub type FracU32 = Frac<u32>;
 
 #[derive(Clone, Copy, Default)]
@@ -165,91 +167,3 @@ impl<T: Copy + Neg<Output = T>> Neg for Frac<T> {
         Self::new(-self.value(), self.denom())
     }
 }
-
-//impl<const MIN: i32, const MAX: i32> From<DFixed> for Fixed<MIN, MAX> {
-//    fn from(value: DFixed) -> Self {
-//        Self(value.convert(MIN, MAX).value())
-//    }
-//}
-//
-//impl<const MIN: i32, const MAX: i32> From<i32> for Fixed<MIN, MAX> {
-//    fn from(value: i32) -> Self {
-//        Fixed(i32::clamp(value, MIN, MAX))
-//    }
-//}
-//
-//impl<const MIN: i32, const MAX: i32> Fixed<MIN, MAX> {
-//    pub fn new(value: i32, min: i32, max: i32) -> Self {
-//        DFixed::new(value, min, max).into()
-//    }
-//
-//    pub fn convert<const MIN2: i32, const MAX2: i32>(self) -> Fixed<MIN2, MAX2> {
-//        let value = (self.value() - MIN) as u64;
-//        let scaled = (value * (MAX2 - MIN2) as u64) / (MAX - MIN) as u64;
-//        let value2 = (scaled as i64 + MIN2 as i64) as i32;
-//
-//        value2.into()
-//    }
-//
-//    pub fn value(&self) -> i32 {
-//        self.0
-//    }
-//}
-//
-//pub struct DFixed {
-//    value: i32,
-//    min: i32,
-//    max: i32,
-//}
-//
-//impl<const MIN: i32, const MAX: i32> From<Fixed<MIN, MAX>> for DFixed {
-//    fn from(value: Fixed<MIN, MAX>) -> Self {
-//        DFixed::new(value.value(), MIN, MAX)
-//    }
-//}
-//
-//impl DFixed {
-//    pub fn new(value: i32, min: i32, max: i32) -> Self {
-//        Self {
-//            value: i32::clamp(value, min, max),
-//            min,
-//            max,
-//        }
-//    }
-//
-//    pub fn convert(self, min: i32, max: i32) -> DFixed {
-//        let value = (self.value - self.min) as u64;
-//        let scaled = (value * (max - min) as u64) / (self.max - self.min) as u64;
-//        let value2 = (scaled as i64 + min as i64) as i32;
-//
-//        Self::new(value2, min, max)
-//    }
-//
-//    pub fn value(&self) -> i32 {
-//        self.value
-//    }
-//
-//    pub fn min(&self) -> i32 {
-//        self.min
-//    }
-//
-//    pub fn max(&self) -> i32 {
-//        self.max
-//    }
-//}
-//
-
-//pub fn add(left: u64, right: u64) -> u64 {
-//    left + right
-//}
-//
-//#[cfg(test)]
-//mod tests {
-//    use super::*;
-//
-//    #[test]
-//    fn it_works() {
-//        let result = add(2, 2);
-//        assert_eq!(result, 4);
-//    }
-//}
