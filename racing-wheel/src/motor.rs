@@ -1,5 +1,5 @@
 use cortex_m::prelude::*;
-use fixed_num::fixed::Fixed;
+use fixed_num::{fixed::Fixed, Frac16};
 use stm32f1xx_hal::gpio::*;
 
 const MOTOR_SIGNAL_MAX: i16 = 10_000;
@@ -33,11 +33,11 @@ impl<PWMF: _embedded_hal_PwmPin<Duty = u16>, PWMR: _embedded_hal_PwmPin<Duty = u
     // Sets the speed of the motor using PWM. The signal will either be active low or active high
     // depending on the 'pwm_type'.
     pub fn set_speed(&mut self, speed: MotorSignal) {
-        let speed = MotorSignal::new(i16::clamp(
-            speed.value(),
-            -MOTOR_SIGNAL_MAX,
-            MOTOR_SIGNAL_MAX,
-        ));
+        let speed = MotorSignal::clamp(
+            speed,
+            -Frac16::new(9, 10).convert(),
+            Frac16::new(9, 10).convert(),
+        );
         let speed_abs = MotorSignal::new(speed.value().abs());
 
         if speed.value() > MOTOR_DEADBAND {
