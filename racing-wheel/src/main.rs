@@ -12,7 +12,6 @@ use fixed_num::Frac16;
 use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;
-use stm32f1xx_hal::adc::Adc;
 use stm32f1xx_hal::gpio::*;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
@@ -20,6 +19,8 @@ use stm32f1xx_hal::timer::Tim3NoRemap;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
 use usb_device::device::{UsbDeviceBuilder, UsbVidPid};
 use usb_hid_device::hid::HID;
+
+const ENCODER_TO_REV: i16 = 2400;
 
 #[entry]
 fn main() -> ! {
@@ -58,23 +59,18 @@ fn main() -> ! {
 
     let motor_enable_pin = gpioa.pa5.into_push_pull_output(&mut gpioa.crl);
 
-    let reverse_pwm_pin = gpioa.pa6.into_alternate_push_pull(&mut gpioa.crl);
-    let forward_pwm_pin = gpioa.pa7.into_alternate_push_pull(&mut gpioa.crl);
-    let pwm_pins = (reverse_pwm_pin, forward_pwm_pin);
+    let reverse_pwm_pin = gpioa.pa7.into_alternate_push_pull(&mut gpioa.crl);
+    let forward_pwm_pin = gpioa.pa6.into_alternate_push_pull(&mut gpioa.crl);
+    let pwm_pins = (forward_pwm_pin, reverse_pwm_pin);
     let pwm = dp
         .TIM3
-        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 8_000.Hz(), &clocks);
-    let (pwm_reverse, pwm_forward) = pwm.split();
+        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 16_000.Hz(), &clocks);
+    let (pwm_forward, pwm_reverse) = pwm.split();
     let mut motor = Motor::new(motor_enable_pin.erase(), pwm_forward, pwm_reverse);
 
-    // Setup buttons and analog input
-    let mut adc_throttle = Adc::adc1(dp.ADC1, clocks);
-    let mut adc_brake = Adc::adc2(dp.ADC2, clocks);
-    let mut analog_throttle_pin = gpioa.pa0.into_analog(&mut gpioa.crl);
-    let mut analog_brake_pin = gpioa.pa1.into_analog(&mut gpioa.crl);
-
-    let button_a = gpioa.pa2.into_pull_down_input(&mut gpioa.crl);
-    let button_b = gpioa.pa3.into_pull_down_input(&mut gpioa.crl);
+    // Setup buttons
+    let button_a = gpiob.pb10.into_pull_down_input(&mut gpiob.crh);
+    let button_b = gpiob.pb11.into_pull_down_input(&mut gpiob.crh);
 
     // Setup USB
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
@@ -106,19 +102,14 @@ fn main() -> ! {
 
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
-            let throttle_raw: u16 = adc_throttle.read(&mut analog_throttle_pin).unwrap();
-            let brake_raw: u16 = adc_brake.read(&mut analog_brake_pin).unwrap();
+            let steering = Frac16::new(steering_raw, ENCODER_TO_REV);
             let mut buttons = [false; 8];
             buttons[0] = button_a.is_high();
             buttons[1] = button_b.is_high();
 
-            let steering = steering_raw.into();
-            let throttle = Frac16::new(throttle_raw as i16, adc_throttle.max_sample() as i16);
-            let brake = Frac16::new(brake_raw as i16, adc_brake.max_sample() as i16);
-
-            let t_val = if throttle > brake { throttle } else { -brake };
-            racing_wheel.get_device_mut().set_throttle(t_val.convert());
-            racing_wheel.get_device_mut().set_steering(steering);
+            racing_wheel
+                .get_device_mut()
+                .set_steering(steering.convert());
             racing_wheel.get_device_mut().set_buttons(buttons);
 
             let ffb = racing_wheel.get_device().get_force_feedback();

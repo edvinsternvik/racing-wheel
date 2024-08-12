@@ -11,6 +11,7 @@ use ram_pool::RAMPool;
 const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
 const MAX_EFFECTS: usize = 16;
 const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
+const DEGREES_OF_ROTATION: i16 = 900;
 
 pub struct RacingWheel {
     ram_pool: RAMPool<MAX_EFFECTS, CUSTOM_DATA_BUFFER_SIZE>,
@@ -41,13 +42,9 @@ impl RacingWheel {
         }
     }
 
-    // Steering angle in degrees * 10^-1
+    // Steering angle in unit of full revolutions
     pub fn set_steering(&mut self, steering: FixedSteering) {
-        self.racing_wheel_report.steering = steering;
-    }
-
-    pub fn set_throttle(&mut self, throttle: FixedFFB) {
-        self.racing_wheel_report.throttle = throttle;
+        self.racing_wheel_report.steering = steering * Frac16::new(2 * 360, DEGREES_OF_ROTATION);
     }
 
     pub fn set_buttons(&mut self, buttons: [bool; 8]) {

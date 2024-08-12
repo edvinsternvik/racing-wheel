@@ -1,7 +1,8 @@
 use fixed_num::Fixed16;
 
 pub const FORCE_LOGICAL_MAX: i32 = 10_000;
-pub type FixedSteering = Fixed16<2400>;
+pub const STEERING_LOGICAL_MAX: i16 = 10_000;
+pub type FixedSteering = Fixed16<{ STEERING_LOGICAL_MAX as u64 }>;
 pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
 
 // Racing wheel report

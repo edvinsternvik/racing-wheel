@@ -74,7 +74,7 @@ fn main() {
     let d_smooth_inv = Frac16::new(d_smooth.denom() - d_smooth.value(), d_smooth.denom());
 
     loop {
-        let position = ((f32::sin(time as f32 / 1000.0) * 2400.0) as i16).into();
+        let position = ((f32::sin(time as f32 / 1000.0) * 10_000.0) as i16).into();
         let velocity =
             (position - prev_pos) * Frac16::new(1000, dt) * d_smooth + prev_vel * d_smooth_inv;
         let acceleration =
