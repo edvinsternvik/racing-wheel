@@ -1,0 +1,25 @@
+[package]
+authors = ["edvin"]
+edition = "2018"
+readme = "README.md"
+name = "pedals"
+version = "0.1.0"
+
+[dependencies]
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.3"
+cortex-m-semihosting = "0.5.0"
+panic-halt = "0.2.0"
+# panic-abort = "0.3.2"
+usb-device = "0.2.9"
+fixed-num = { path = "../lib/fixed-num" }
+usb-hid-device = { path = "../lib/usb-hid-device" }
+
+[dependencies.stm32f1xx-hal]
+version = "0.10.0"
+features = ["rt", "stm32f103", "medium"]
+
+[profile.release]
+codegen-units = 1
+debug = true
+lto = true
