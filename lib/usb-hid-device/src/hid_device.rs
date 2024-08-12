@@ -1,6 +1,6 @@
+use crate::hid::{GetReportInWriter, ReportWriter};
 use core::convert::TryFrom;
 use usb_device::{bus::UsbBus, UsbError};
-use crate::usb::hid::{GetReportInWriter, ReportWriter};
 
 pub trait HIDDeviceType {
     fn descriptor() -> &'static [u8];
@@ -12,11 +12,7 @@ pub trait HIDDeviceType {
         let (_, _) = (report_id, writer);
         Ok(())
     }
-    fn report_request_out(
-        &mut self,
-        report_id: ReportID,
-        data: &[u8],
-    ) -> Result<Option<bool>, ()> {
+    fn report_request_out(&mut self, report_id: ReportID, data: &[u8]) -> Result<Option<bool>, ()> {
         let (_, _) = (report_id, data);
         Ok(None)
     }
@@ -35,7 +31,7 @@ pub trait HIDReport {
 
 pub trait HIDReportIn<const N: usize>
 where
-    Self: HIDReport
+    Self: HIDReport,
 {
     // Serialize a report coming from the device, to be sent to the host.
     fn report_bytes(&self) -> [u8; N];
@@ -85,4 +81,3 @@ impl TryFrom<u8> for ReportType {
         }
     }
 }
-

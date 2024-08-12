@@ -1,4 +1,4 @@
-use crate::usb::hid_device::*;
+use crate::hid_device::*;
 use core::convert::TryInto;
 use usb_device::{
     class_prelude::*,

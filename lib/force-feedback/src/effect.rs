@@ -1,11 +1,11 @@
 use crate::reports::{
-    EffectType, SetConditionReport, SetConstantForceReport, SetCustomForceReport, SetEffectReport,
-    SetEnvelopeReport, SetPeriodicReport, SetRampForceReport,
+    EffectType, SetCondition, SetConstantForce, SetCustomForce, SetEffect, SetEnvelope,
+    SetPeriodic, SetRampForce,
 };
 
 #[derive(Clone, Copy, Default)]
 pub struct Effect {
-    pub effect_report: Option<SetEffectReport>,
+    pub effect_report: Option<SetEffect>,
     pub parameter_1: Option<EffectParameter>,
     pub parameter_2: Option<EffectParameter>,
 }
@@ -24,10 +24,10 @@ impl Effect {
 
 #[derive(Clone, Copy)]
 pub enum EffectParameter {
-    Envelope(SetEnvelopeReport),
-    Condition(SetConditionReport),
-    Periodic(SetPeriodicReport),
-    ConstantForce(SetConstantForceReport),
-    RampForce(SetRampForceReport),
-    CustomForce(SetCustomForceReport),
+    Envelope(SetEnvelope),
+    Condition(SetCondition),
+    Periodic(SetPeriodic),
+    ConstantForce(SetConstantForce),
+    RampForce(SetRampForce),
+    CustomForce(SetCustomForce),
 }

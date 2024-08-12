@@ -1,11 +1,9 @@
-use crate::{
-    misc::bitflags,
-    usb::{
-        hid::ReportWriter,
-        hid_device::{HIDDeviceType, HIDReport, HIDReportIn, ReportID, ReportType},
-    },
-};
+use crate::misc::bitflags;
 use usb_device::{bus::UsbBus, prelude::UsbError};
+use usb_hid_device::{
+    hid::ReportWriter,
+    hid_device::{HIDDeviceType, HIDReport, HIDReportIn, ReportID, ReportType},
+};
 
 pub struct SimpleWheel {
     pub report: SimpleWheelReport,

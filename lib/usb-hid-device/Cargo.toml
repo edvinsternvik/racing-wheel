@@ -1,0 +1,7 @@
+[package]
+name = "usb-hid-device"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+usb-device = "0.2.9"

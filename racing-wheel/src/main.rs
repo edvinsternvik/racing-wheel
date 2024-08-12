@@ -5,7 +5,6 @@ mod misc;
 mod motor;
 mod racing_wheel;
 mod simple_wheel;
-mod usb;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
@@ -19,8 +18,8 @@ use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::timer::Tim3NoRemap;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
-use usb::hid::HID;
 use usb_device::device::{UsbDeviceBuilder, UsbVidPid};
+use usb_hid_device::hid::HID;
 
 #[entry]
 fn main() -> ! {

@@ -1,15 +1,34 @@
-use crate::{
-    misc::{bitflag, bitflags, bits},
-    usb::hid_device::{HIDReport, HIDReportIn, HIDReportOut, HIDReportRAM, ReportID, ReportType},
+use crate::misc::{bitflag, bitflags, bits};
+use core::{
+    convert::{TryFrom, TryInto},
+    ops::{Deref, DerefMut},
 };
-use core::convert::{TryFrom, TryInto};
 use force_feedback::reports::*;
+use usb_hid_device::hid_device::{
+    HIDReport, HIDReportIn, HIDReportOut, HIDReportRAM, ReportID, ReportType,
+};
 
-impl HIDReport for RacingWheelReport {
+pub struct Report<T>(pub T);
+
+impl<T> Deref for Report<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for Report<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl HIDReport for Report<RacingWheelState> {
     const ID: ReportID = ReportID(ReportType::Input, 0x01);
 }
 
-impl HIDReportIn<6> for RacingWheelReport {
+impl HIDReportIn<6> for Report<RacingWheelState> {
     fn report_bytes(&self) -> [u8; 6] {
         [
             Self::ID.1,
@@ -22,11 +41,11 @@ impl HIDReportIn<6> for RacingWheelReport {
     }
 }
 
-impl HIDReport for PIDStateReport {
+impl HIDReport for Report<PIDState> {
     const ID: ReportID = ReportID(ReportType::Input, 0x02);
 }
 
-impl HIDReportIn<3> for PIDStateReport {
+impl HIDReportIn<3> for Report<PIDState> {
     fn report_bytes(&self) -> [u8; 3] {
         [
             Self::ID.1,
@@ -42,21 +61,21 @@ impl HIDReportIn<3> for PIDStateReport {
     }
 }
 
-impl HIDReport for SetEffectReport {
+impl HIDReport for Report<SetEffect> {
     const ID: ReportID = ReportID(ReportType::Output, 0x01);
 }
 
-impl HIDReportOut for SetEffectReport {
+impl HIDReportOut for Report<SetEffect> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<19> for SetEffectReport {
+impl HIDReportRAM<19> for Report<SetEffect> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         let duration = u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]);
         let sample_period = u16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]);
-        Some(Self {
+        Some(Report(SetEffect {
             effect_block_index,
             effect_type: EffectType::try_from(*ram.get(0)?).ok()?,
             duration: if duration == 0 || duration == u16::MAX {
@@ -86,7 +105,7 @@ impl HIDReportRAM<19> for SetEffectReport {
                 *ram.get(17)?,
                 *ram.get(18)?,
             ]),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 19] {
@@ -118,19 +137,19 @@ impl HIDReportRAM<19> for SetEffectReport {
     }
 }
 
-impl HIDReport for SetEnvelopeReport {
+impl HIDReport for Report<SetEnvelope> {
     const ID: ReportID = ReportID(ReportType::Output, 0x02);
 }
 
-impl HIDReportOut for SetEnvelopeReport {
+impl HIDReportOut for Report<SetEnvelope> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<12> for SetEnvelopeReport {
+impl HIDReportRAM<12> for Report<SetEnvelope> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetEnvelope {
             effect_block_index,
             attack_level: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
             fade_level: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
@@ -146,7 +165,7 @@ impl HIDReportRAM<12> for SetEnvelopeReport {
                 *ram.get(10)?,
                 *ram.get(11)?,
             ]),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 12] {
@@ -167,19 +186,19 @@ impl HIDReportRAM<12> for SetEnvelopeReport {
     }
 }
 
-impl HIDReport for SetConditionReport {
+impl HIDReport for Report<SetCondition> {
     const ID: ReportID = ReportID(ReportType::Output, 0x03);
 }
 
-impl HIDReportOut for SetConditionReport {
+impl HIDReportOut for Report<SetCondition> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<13> for SetConditionReport {
+impl HIDReportRAM<13> for Report<SetCondition> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetCondition {
             effect_block_index,
             parameter_block_offset: bits(*ram.get(0)?, 0, 4),
             type_specific_block_offset_instance_1: bits(*ram.get(0)?, 4, 2),
@@ -190,7 +209,7 @@ impl HIDReportRAM<13> for SetConditionReport {
             positive_saturation: i16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]).into(),
             negative_saturation: i16::from_le_bytes([*ram.get(9)?, *ram.get(10)?]).into(),
             dead_band: i16::from_le_bytes([*ram.get(11)?, *ram.get(12)?]).into(),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 13] {
@@ -214,25 +233,25 @@ impl HIDReportRAM<13> for SetConditionReport {
     }
 }
 
-impl HIDReport for SetPeriodicReport {
+impl HIDReport for Report<SetPeriodic> {
     const ID: ReportID = ReportID(ReportType::Output, 0x04);
 }
 
-impl HIDReportOut for SetPeriodicReport {
+impl HIDReportOut for Report<SetPeriodic> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<10> for SetPeriodicReport {
+impl HIDReportRAM<10> for Report<SetPeriodic> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetPeriodic {
             effect_block_index,
             magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
             offset: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
             phase: u16::from_le_bytes([*ram.get(4)?, *ram.get(5)?]),
             period: u32::from_le_bytes([*ram.get(6)?, *ram.get(7)?, *ram.get(8)?, *ram.get(9)?]),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 10] {
@@ -251,22 +270,22 @@ impl HIDReportRAM<10> for SetPeriodicReport {
     }
 }
 
-impl HIDReport for SetConstantForceReport {
+impl HIDReport for Report<SetConstantForce> {
     const ID: ReportID = ReportID(ReportType::Output, 0x05);
 }
 
-impl HIDReportOut for SetConstantForceReport {
+impl HIDReportOut for Report<SetConstantForce> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<2> for SetConstantForceReport {
+impl HIDReportRAM<2> for Report<SetConstantForce> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetConstantForce {
             effect_block_index,
             magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 2] {
@@ -277,23 +296,23 @@ impl HIDReportRAM<2> for SetConstantForceReport {
     }
 }
 
-impl HIDReport for SetRampForceReport {
+impl HIDReport for Report<SetRampForce> {
     const ID: ReportID = ReportID(ReportType::Output, 0x06);
 }
 
-impl HIDReportOut for SetRampForceReport {
+impl HIDReportOut for Report<SetRampForce> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<4> for SetRampForceReport {
+impl HIDReportRAM<4> for Report<SetRampForce> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetRampForce {
             effect_block_index,
             ramp_start: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
             ramp_end: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 4] {
@@ -306,24 +325,24 @@ impl HIDReportRAM<4> for SetRampForceReport {
     }
 }
 
-impl HIDReport for CustomForceDataReport {
+impl HIDReport for Report<CustomForceData> {
     const ID: ReportID = ReportID(ReportType::Output, 0x07);
 }
 
-impl HIDReportOut for CustomForceDataReport {
+impl HIDReportOut for Report<CustomForceData> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<15> for CustomForceDataReport {
+impl HIDReportRAM<15> for Report<CustomForceData> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(CustomForceData {
             effect_block_index,
             custom_force_data_offset: u16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]),
             byte_count: *ram.get(2)?,
             custom_force_data: ram.get(3..(3 + 12))?.try_into().unwrap_or_default(),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 15] {
@@ -347,85 +366,85 @@ impl HIDReportRAM<15> for CustomForceDataReport {
     }
 }
 
-impl HIDReport for DownloadForceSample {
+impl HIDReport for Report<DownloadForceSample> {
     const ID: ReportID = ReportID(ReportType::Output, 0x08);
 }
 
-impl HIDReportOut for DownloadForceSample {
+impl HIDReportOut for Report<DownloadForceSample> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(DownloadForceSample {
             steering: *bytes.get(1)? as i8,
             throttle: *bytes.get(2)?,
-        })
+        }))
     }
 }
 
-impl HIDReport for EffectOperationReport {
+impl HIDReport for Report<SetEffectOperation> {
     const ID: ReportID = ReportID(ReportType::Output, 0x0A);
 }
 
-impl HIDReportOut for EffectOperationReport {
+impl HIDReportOut for Report<SetEffectOperation> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetEffectOperation {
             effect_block_index: *bytes.get(1)?,
             effect_operation: EffectOperation::try_from(*bytes.get(2)?).ok()?,
             loop_count: *bytes.get(3)?,
-        })
+        }))
     }
 }
 
-impl HIDReport for PIDBlockFreeReport {
+impl HIDReport for Report<PIDBlockFree> {
     const ID: ReportID = ReportID(ReportType::Output, 0x0B);
 }
 
-impl HIDReportOut for PIDBlockFreeReport {
+impl HIDReportOut for Report<PIDBlockFree> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(PIDBlockFree {
             effect_block_index: *bytes.get(1)?,
-        })
+        }))
     }
 }
 
-impl HIDReport for PIDDeviceControl {
+impl HIDReport for Report<PIDDeviceControl> {
     const ID: ReportID = ReportID(ReportType::Output, 0x0C);
 }
 
-impl HIDReportOut for PIDDeviceControl {
+impl HIDReportOut for Report<PIDDeviceControl> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(PIDDeviceControl {
             device_control: DeviceControl::try_from(*bytes.get(1)?).ok()?,
-        })
+        }))
     }
 }
-impl HIDReport for DeviceGainReport {
+impl HIDReport for Report<DeviceGain> {
     const ID: ReportID = ReportID(ReportType::Output, 0x0D);
 }
 
-impl HIDReportOut for DeviceGainReport {
+impl HIDReportOut for Report<DeviceGain> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(DeviceGain {
             device_gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
-        })
+        }))
     }
 }
 
-impl HIDReport for SetCustomForceReport {
+impl HIDReport for Report<SetCustomForce> {
     const ID: ReportID = ReportID(ReportType::Output, 0x0E);
 }
 
-impl HIDReportOut for SetCustomForceReport {
+impl HIDReportOut for Report<SetCustomForce> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Self::from_ram(&bytes[2..], *bytes.get(1)?)
     }
 }
 
-impl HIDReportRAM<4> for SetCustomForceReport {
+impl HIDReportRAM<4> for Report<SetCustomForce> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetCustomForce {
             effect_block_index,
             custom_force_data_offset: u16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]),
             sample_count: u16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]),
-        })
+        }))
     }
 
     fn to_ram(&self) -> [u8; 4] {
@@ -438,38 +457,38 @@ impl HIDReportRAM<4> for SetCustomForceReport {
     }
 }
 
-impl HIDReport for PIDPoolMoveReport {
+impl HIDReport for Report<PIDPoolMove> {
     const ID: ReportID = ReportID(ReportType::Output, 0x0F);
 }
 
-impl HIDReportOut for PIDPoolMoveReport {
+impl HIDReportOut for Report<PIDPoolMove> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(PIDPoolMove {
             move_source: u16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]),
             move_destination: u16::from_le_bytes([*bytes.get(3)?, *bytes.get(4)?]),
             move_length: u16::from_le_bytes([*bytes.get(5)?, *bytes.get(6)?]),
-        })
+        }))
     }
 }
 
-impl HIDReport for CreateNewEffectReport {
+impl HIDReport for Report<CreateNewEffect> {
     const ID: ReportID = ReportID(ReportType::Feature, 0x01);
 }
 
-impl HIDReportOut for CreateNewEffectReport {
+impl HIDReportOut for Report<CreateNewEffect> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(CreateNewEffect {
             effect_type: EffectType::try_from(*bytes.get(1)?).ok()?,
             byte_count: u16::from_le_bytes([*bytes.get(2)?, *bytes.get(3)?]),
-        })
+        }))
     }
 }
 
-impl HIDReport for PIDBlockLoadReport {
+impl HIDReport for Report<PIDBlockLoad> {
     const ID: ReportID = ReportID(ReportType::Feature, 0x02);
 }
 
-impl HIDReportIn<5> for PIDBlockLoadReport {
+impl HIDReportIn<5> for Report<PIDBlockLoad> {
     fn report_bytes(&self) -> [u8; 5] {
         [
             Self::ID.1,
@@ -481,11 +500,11 @@ impl HIDReportIn<5> for PIDBlockLoadReport {
     }
 }
 
-impl HIDReport for PIDPoolReport {
+impl HIDReport for Report<PIDPool> {
     const ID: ReportID = ReportID(ReportType::Feature, 0x03);
 }
 
-impl HIDReportIn<12> for PIDPoolReport {
+impl HIDReportIn<12> for Report<PIDPool> {
     fn report_bytes(&self) -> [u8; 12] {
         [
             Self::ID.1,
@@ -508,14 +527,14 @@ impl HIDReportIn<12> for PIDPoolReport {
     }
 }
 
-impl HIDReport for SetConfigReport {
+impl HIDReport for Report<SetConfig> {
     const ID: ReportID = ReportID(ReportType::Feature, 0x04);
 }
 
-impl HIDReportOut for SetConfigReport {
+impl HIDReportOut for Report<SetConfig> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Self {
+        Some(Report(SetConfig {
             gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
-        })
+        }))
     }
 }

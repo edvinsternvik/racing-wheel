@@ -1,6 +1,7 @@
-use crate::usb::hid_device::HIDReportRAM;
+use super::hid_reports::Report;
 use core::mem::{size_of, size_of_val};
-use force_feedback::{effect::Effect, reports::SetEffectReport};
+use force_feedback::{effect::Effect, reports::SetEffect};
+use usb_hid_device::hid_device::HIDReportRAM;
 
 pub struct RAMPool<const MAX_EFFECTS: usize, const CUSTOM_DATA_BUFFER_SIZE: usize> {
     custom_data_buffer: [u8; CUSTOM_DATA_BUFFER_SIZE],
@@ -14,7 +15,7 @@ impl<const MAX_EFFECTS: usize, const CUSTOM_DATA_BUFFER_SIZE: usize>
     pub fn new() -> Self {
         Self {
             custom_data_buffer: [0; CUSTOM_DATA_BUFFER_SIZE],
-            allocated: MAX_EFFECTS * SetEffectReport::RAM_SIZE,
+            allocated: MAX_EFFECTS * Report::<SetEffect>::RAM_SIZE,
             effects: [None; MAX_EFFECTS],
         }
     }

@@ -1,8 +1,8 @@
 use crate::{
     effect::{Effect, EffectParameter},
     reports::{
-        EffectType, FixedFFB, FixedSteering, SetConditionReport, SetConstantForceReport,
-        SetEffectReport, SetEnvelopeReport, SetPeriodicReport, SetRampForceReport,
+        EffectType, FixedFFB, FixedSteering, SetCondition, SetConstantForce,
+        SetEffect, SetEnvelope, SetPeriodic, SetRampForce,
     },
 };
 use fixed_num::{Frac16, FracU32};
@@ -45,7 +45,7 @@ pub fn calculate_force_feedback(
     }
 }
 
-fn calculate_envelope(envelope: &SetEnvelopeReport, time: u32, duration: Option<u16>) -> FixedFFB {
+fn calculate_envelope(envelope: &SetEnvelope, time: u32, duration: Option<u16>) -> FixedFFB {
     let mut result = FixedFFB::one();
     if time < envelope.attack_time {
         let fade_force = envelope.attack_level
@@ -67,7 +67,7 @@ fn calculate_envelope(envelope: &SetEnvelopeReport, time: u32, duration: Option<
     result
 }
 
-fn condition_force(metric: FixedSteering, condition: &SetConditionReport) -> FixedFFB {
+fn condition_force(metric: FixedSteering, condition: &SetCondition) -> FixedFFB {
     let metric = metric.convert();
     let force = if metric < condition.cp_offset - condition.dead_band {
         let velocity_delta = metric - (condition.cp_offset - condition.dead_band);
@@ -87,9 +87,9 @@ fn condition_force(metric: FixedSteering, condition: &SetConditionReport) -> Fix
 }
 
 fn constant_ffb(
-    effect: &SetEffectReport,
-    constant_force: &SetConstantForceReport,
-    envelope: &SetEnvelopeReport,
+    effect: &SetEffect,
+    constant_force: &SetConstantForce,
+    envelope: &SetEnvelope,
     time: u32,
 ) -> FixedFFB {
     let force = constant_force.magnitude;
@@ -98,9 +98,9 @@ fn constant_ffb(
 }
 
 fn ramp_ffb(
-    effect: &SetEffectReport,
-    ramp_force: &SetRampForceReport,
-    envelope: &SetEnvelopeReport,
+    effect: &SetEffect,
+    ramp_force: &SetRampForce,
+    envelope: &SetEnvelope,
     time: u32,
 ) -> FixedFFB {
     if let Some(duration) = effect.duration {
@@ -115,9 +115,9 @@ fn ramp_ffb(
 }
 
 fn condition_ffb(
-    effect: &SetEffectReport,
-    condition_1: &SetConditionReport,
-    _condition_2: &SetConditionReport,
+    effect: &SetEffect,
+    condition_1: &SetCondition,
+    _condition_2: &SetCondition,
     metric: FixedSteering,
 ) -> FixedFFB {
     let force = condition_force(metric, condition_1);
@@ -125,9 +125,9 @@ fn condition_ffb(
 }
 
 fn periodic_ffb(
-    effect: &SetEffectReport,
-    periodic: &SetPeriodicReport,
-    envelope: &SetEnvelopeReport,
+    effect: &SetEffect,
+    periodic: &SetPeriodic,
+    envelope: &SetEnvelope,
     time: u32,
     f: fn(FracU32) -> Frac16,
 ) -> FixedFFB {

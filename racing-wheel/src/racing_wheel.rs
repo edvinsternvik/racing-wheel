@@ -14,14 +14,14 @@ const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
 
 pub struct RacingWheel {
     ram_pool: RAMPool<MAX_EFFECTS, CUSTOM_DATA_BUFFER_SIZE>,
-    next_effect: Option<CreateNewEffectReport>,
+    next_effect: Option<CreateNewEffect>,
     running_effects: FixedSet<RunningEffect, MAX_SIMULTANEOUS_EFFECTS>,
     device_gain: FixedFFB,
-    racing_wheel_report: RacingWheelReport,
-    pid_state_report: PIDStateReport,
+    racing_wheel_report: RacingWheelState,
+    pid_state_report: PIDState,
     steering_prev: FixedSteering,
     steering_velocity: FixedSteering,
-    config: SetConfigReport,
+    config: SetConfig,
 }
 
 impl RacingWheel {
@@ -31,11 +31,11 @@ impl RacingWheel {
             next_effect: None,
             running_effects: FixedSet::new(),
             device_gain: 0.into(),
-            racing_wheel_report: RacingWheelReport::default(),
-            pid_state_report: PIDStateReport::default(),
+            racing_wheel_report: RacingWheelState::default(),
+            pid_state_report: PIDState::default(),
             steering_prev: 0.into(),
             steering_velocity: 0.into(),
-            config: SetConfigReport {
+            config: SetConfig {
                 gain: Frac16::new(1, 4).convert(),
             },
         }

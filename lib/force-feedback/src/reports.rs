@@ -6,7 +6,7 @@ pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
 
 // Racing wheel report
 #[derive(Default, Clone)]
-pub struct RacingWheelReport {
+pub struct RacingWheelState {
     pub buttons: [bool; 8],
     pub steering: FixedSteering,
     pub throttle: FixedFFB,
@@ -14,7 +14,7 @@ pub struct RacingWheelReport {
 
 // PID State Report
 #[derive(Default, Clone)]
-pub struct PIDStateReport {
+pub struct PIDState {
     pub device_paused: bool,
     pub actuators_enabled: bool,
     pub safety_switch: bool,
@@ -26,7 +26,7 @@ pub struct PIDStateReport {
 
 // Set Effect Report
 #[derive(Clone, Copy)]
-pub struct SetEffectReport {
+pub struct SetEffect {
     pub effect_block_index: u8,
     pub effect_type: EffectType,
     pub duration: Option<u16>,
@@ -85,7 +85,7 @@ impl TryFrom<u8> for EffectType {
 
 // Set Envelope Report
 #[derive(Clone, Copy)]
-pub struct SetEnvelopeReport {
+pub struct SetEnvelope {
     pub effect_block_index: u8,
     pub attack_level: FixedFFB,
     pub fade_level: FixedFFB,
@@ -95,7 +95,7 @@ pub struct SetEnvelopeReport {
 
 // Set Condition Report
 #[derive(Clone, Copy)]
-pub struct SetConditionReport {
+pub struct SetCondition {
     pub effect_block_index: u8,
     pub parameter_block_offset: u8,
     pub type_specific_block_offset_instance_1: u8,
@@ -110,7 +110,7 @@ pub struct SetConditionReport {
 
 // Set Periodic Report
 #[derive(Clone, Copy)]
-pub struct SetPeriodicReport {
+pub struct SetPeriodic {
     pub effect_block_index: u8,
     pub magnitude: FixedFFB,
     pub offset: FixedFFB,
@@ -120,14 +120,14 @@ pub struct SetPeriodicReport {
 
 // Set Constant Force Report
 #[derive(Clone, Copy)]
-pub struct SetConstantForceReport {
+pub struct SetConstantForce {
     pub effect_block_index: u8,
     pub magnitude: FixedFFB,
 }
 
 // Set Ramp Force Report
 #[derive(Clone, Copy)]
-pub struct SetRampForceReport {
+pub struct SetRampForce {
     pub effect_block_index: u8,
     pub ramp_start: FixedFFB,
     pub ramp_end: FixedFFB,
@@ -135,7 +135,7 @@ pub struct SetRampForceReport {
 
 // Custom Force Data Report
 #[derive(Clone, Copy)]
-pub struct CustomForceDataReport {
+pub struct CustomForceData {
     pub effect_block_index: u8,
     pub custom_force_data_offset: u16,
     pub byte_count: u8,
@@ -151,7 +151,7 @@ pub struct DownloadForceSample {
 
 // Effect Operation Report
 #[derive(Clone, Copy)]
-pub struct EffectOperationReport {
+pub struct SetEffectOperation {
     pub effect_block_index: u8,
     pub effect_operation: EffectOperation,
     pub loop_count: u8,
@@ -179,7 +179,7 @@ impl TryFrom<u8> for EffectOperation {
 
 // PID Block Free Report
 #[derive(Clone, Copy)]
-pub struct PIDBlockFreeReport {
+pub struct PIDBlockFree {
     pub effect_block_index: u8,
 }
 
@@ -217,13 +217,13 @@ impl TryFrom<u8> for DeviceControl {
 
 // Device Gain Report
 #[derive(Clone, Copy)]
-pub struct DeviceGainReport {
+pub struct DeviceGain {
     pub device_gain: FixedFFB,
 }
 
 // Set Custom Force Report
 #[derive(Clone, Copy)]
-pub struct SetCustomForceReport {
+pub struct SetCustomForce {
     pub effect_block_index: u8,
     pub custom_force_data_offset: u16,
     pub sample_count: u16,
@@ -231,7 +231,7 @@ pub struct SetCustomForceReport {
 
 // PID Pool Move Report
 #[derive(Clone, Copy)]
-pub struct PIDPoolMoveReport {
+pub struct PIDPoolMove {
     pub move_source: u16,
     pub move_destination: u16,
     pub move_length: u16,
@@ -239,14 +239,14 @@ pub struct PIDPoolMoveReport {
 
 // Create New Effect Report
 #[derive(Clone, Copy)]
-pub struct CreateNewEffectReport {
+pub struct CreateNewEffect {
     pub effect_type: EffectType,
     pub byte_count: u16,
 }
 
 // PID Block Load Report
 #[derive(Clone, Copy)]
-pub struct PIDBlockLoadReport {
+pub struct PIDBlockLoad {
     pub effect_block_index: u8,
     pub block_load_status: BlockLoadStatus,
     pub ram_pool_available: u16,
@@ -261,7 +261,7 @@ pub enum BlockLoadStatus {
 
 // PID Pool Report
 #[derive(Clone, Copy)]
-pub struct PIDPoolReport {
+pub struct PIDPool {
     pub ram_pool_size: u16,
     pub simultaneous_effects_max: u8,
     pub param_block_size_set_effect: u8,
@@ -278,6 +278,6 @@ pub struct PIDPoolReport {
 
 // Set Configuration Report
 #[derive(Clone, Copy, Default)]
-pub struct SetConfigReport {
+pub struct SetConfig {
     pub gain: FixedFFB,
 }

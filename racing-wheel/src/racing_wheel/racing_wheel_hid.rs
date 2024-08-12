@@ -1,15 +1,14 @@
 use super::{
-    descriptor::RACING_WHEEL_DESCRIPTOR, RacingWheel, RunningEffect, MAX_SIMULTANEOUS_EFFECTS,
+    descriptor::RACING_WHEEL_DESCRIPTOR, hid_reports::Report, RacingWheel, RunningEffect,
+    MAX_SIMULTANEOUS_EFFECTS,
 };
-use crate::{
-    misc::FixedSet,
-    usb::{
-        hid::{GetReportInWriter, ReportWriter},
-        hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
-    },
-};
+use crate::misc::FixedSet;
 use force_feedback::{effect::EffectParameter, reports::*};
 use usb_device::{bus::UsbBus, UsbError};
+use usb_hid_device::{
+    hid::{GetReportInWriter, ReportWriter},
+    hid_device::{HIDDeviceType, HIDReport, HIDReportOut, HIDReportRAM, ReportID},
+};
 
 impl HIDDeviceType for RacingWheel {
     fn descriptor() -> &'static [u8] {
@@ -22,121 +21,121 @@ impl HIDDeviceType for RacingWheel {
         writer: GetReportInWriter<B>,
     ) -> Result<(), UsbError> {
         match report_id {
-            PIDBlockLoadReport::ID => {
+            Report::<PIDBlockLoad>::ID => {
                 if let Some(_) = self.next_effect {
                     self.next_effect = None;
 
                     if let Some(index) = self.ram_pool.new_effect() {
-                        writer.accept(PIDBlockLoadReport {
+                        writer.accept(Report(PIDBlockLoad {
                             effect_block_index: index as u8,
                             block_load_status: BlockLoadStatus::Success,
                             ram_pool_available: self.ram_pool.available() as u16,
-                        })?;
+                        }))?;
                     } else {
-                        writer.accept(PIDBlockLoadReport {
+                        writer.accept(Report(PIDBlockLoad {
                             effect_block_index: 0,
                             block_load_status: BlockLoadStatus::Full,
                             ram_pool_available: self.ram_pool.available() as u16,
-                        })?;
+                        }))?;
                     }
                 } else {
-                    writer.accept(PIDBlockLoadReport {
+                    writer.accept(Report(PIDBlockLoad {
                         effect_block_index: 0,
                         block_load_status: BlockLoadStatus::Error,
                         ram_pool_available: self.ram_pool.available() as u16,
-                    })?;
+                    }))?;
                 }
                 Ok(())
             }
-            PIDPoolReport::ID => writer.accept(PIDPoolReport {
+            Report::<PIDPool>::ID => writer.accept(Report(PIDPool {
                 ram_pool_size: self.ram_pool.pool_size() as u16,
                 simultaneous_effects_max: MAX_SIMULTANEOUS_EFFECTS as u8,
-                param_block_size_set_effect: SetEffectReport::RAM_SIZE as u8,
-                param_block_size_set_envelope: SetEnvelopeReport::RAM_SIZE as u8,
-                param_block_size_set_condition: SetConditionReport::RAM_SIZE as u8,
-                param_block_size_set_periodic: SetPeriodicReport::RAM_SIZE as u8,
-                param_block_size_set_constant_force: SetConstantForceReport::RAM_SIZE as u8,
-                param_block_size_set_ramp_force: SetRampForceReport::RAM_SIZE as u8,
-                param_block_size_set_custom_force: SetCustomForceReport::RAM_SIZE as u8,
+                param_block_size_set_effect: Report::<SetEffect>::RAM_SIZE as u8,
+                param_block_size_set_envelope: Report::<SetEnvelope>::RAM_SIZE as u8,
+                param_block_size_set_condition: Report::<SetCondition>::RAM_SIZE as u8,
+                param_block_size_set_periodic: Report::<SetPeriodic>::RAM_SIZE as u8,
+                param_block_size_set_constant_force: Report::<SetConstantForce>::RAM_SIZE as u8,
+                param_block_size_set_ramp_force: Report::<SetRampForce>::RAM_SIZE as u8,
+                param_block_size_set_custom_force: Report::<SetCustomForce>::RAM_SIZE as u8,
                 device_managed_pool: true,
                 shared_parameter_blocks: false,
                 isochronous_enable: true,
-            }),
+            })),
             _ => Ok(()),
         }
     }
 
     fn report_request_out(&mut self, report_id: ReportID, data: &[u8]) -> Result<Option<bool>, ()> {
         match report_id {
-            SetEffectReport::ID => {
-                let report = SetEffectReport::into_report(data).ok_or(())?;
+            Report::<SetEffect>::ID => {
+                let report = Report::<SetEffect>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-                effect.effect_report = Some(report);
+                effect.effect_report = Some(*report);
 
                 Ok(Some(true))
             }
-            SetEnvelopeReport::ID => {
-                let report = SetEnvelopeReport::into_report(data).ok_or(())?;
+            Report::<SetEnvelope>::ID => {
+                let report = Report::<SetEnvelope>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-                effect.parameter_2 = Some(EffectParameter::Envelope(report));
+                effect.parameter_2 = Some(EffectParameter::Envelope(*report));
 
                 Ok(Some(true))
             }
-            SetConditionReport::ID => {
-                let report = SetConditionReport::into_report(data).ok_or(())?;
+            Report::<SetCondition>::ID => {
+                let report = Report::<SetCondition>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
                 if report.parameter_block_offset == 0 {
-                    effect.parameter_1 = Some(EffectParameter::Condition(report));
+                    effect.parameter_1 = Some(EffectParameter::Condition(*report));
                 } else if report.parameter_block_offset == 1 {
-                    effect.parameter_2 = Some(EffectParameter::Condition(report));
+                    effect.parameter_2 = Some(EffectParameter::Condition(*report));
                 }
                 Ok(Some(true))
             }
-            SetPeriodicReport::ID => {
-                let report = SetPeriodicReport::into_report(data).ok_or(())?;
+            Report::<SetPeriodic>::ID => {
+                let report = Report::<SetPeriodic>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-                effect.parameter_1 = Some(EffectParameter::Periodic(report));
+                effect.parameter_1 = Some(EffectParameter::Periodic(*report));
 
                 Ok(Some(true))
             }
-            SetConstantForceReport::ID => {
-                let report = SetConstantForceReport::into_report(data).ok_or(())?;
+            Report::<SetConstantForce>::ID => {
+                let report = Report::<SetConstantForce>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-                effect.parameter_1 = Some(EffectParameter::ConstantForce(report));
+                effect.parameter_1 = Some(EffectParameter::ConstantForce(*report));
 
                 Ok(Some(true))
             }
-            SetRampForceReport::ID => {
-                let report = SetRampForceReport::into_report(data).ok_or(())?;
+            Report::<SetRampForce>::ID => {
+                let report = Report::<SetRampForce>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-                effect.parameter_1 = Some(EffectParameter::RampForce(report));
+                effect.parameter_1 = Some(EffectParameter::RampForce(*report));
 
                 Ok(Some(true))
             }
-            CustomForceDataReport::ID => {
-                let _ = CustomForceDataReport::into_report(data).ok_or(())?;
+            Report::<CustomForceData>::ID => {
+                let _ = Report::<CustomForceData>::into_report(data).ok_or(())?;
                 Ok(Some(true))
             }
-            EffectOperationReport::ID => {
-                let report = EffectOperationReport::into_report(data).ok_or(())?;
+            Report::<SetEffectOperation>::ID => {
+                let report = Report::<SetEffectOperation>::into_report(data).ok_or(())?;
                 match report.effect_operation {
                     EffectOperation::EffectStart => {
                         self.running_effects
@@ -155,13 +154,13 @@ impl HIDDeviceType for RacingWheel {
 
                 Ok(Some(true))
             }
-            PIDBlockFreeReport::ID => {
-                let report = PIDBlockFreeReport::into_report(data).ok_or(())?;
+            Report::<PIDBlockFree>::ID => {
+                let report = Report::<PIDBlockFree>::into_report(data).ok_or(())?;
                 self.ram_pool.free_effect(report.effect_block_index)?;
                 Err(())
             }
-            PIDDeviceControl::ID => {
-                let report = PIDDeviceControl::into_report(data).ok_or(())?;
+            Report::<PIDDeviceControl>::ID => {
+                let report = Report::<PIDDeviceControl>::into_report(data).ok_or(())?;
                 match report.device_control {
                     DeviceControl::EnableActuators => {
                         self.pid_state_report.actuators_enabled = true
@@ -177,32 +176,32 @@ impl HIDDeviceType for RacingWheel {
 
                 Ok(Some(true))
             }
-            DeviceGainReport::ID => {
-                let report = DeviceGainReport::into_report(data).ok_or(())?;
+            Report::<DeviceGain>::ID => {
+                let report = Report::<DeviceGain>::into_report(data).ok_or(())?;
                 self.device_gain = report.device_gain;
                 Ok(Some(true))
             }
-            SetCustomForceReport::ID => {
-                let report = SetCustomForceReport::into_report(data).ok_or(())?;
+            Report::<SetCustomForce>::ID => {
+                let report = Report::<SetCustomForce>::into_report(data).ok_or(())?;
                 let effect = self
                     .ram_pool
                     .get_effect_mut(report.effect_block_index)
                     .ok_or(())?;
-                effect.parameter_1 = Some(EffectParameter::CustomForce(report));
+                effect.parameter_1 = Some(EffectParameter::CustomForce(*report));
 
                 Ok(Some(true))
             }
-            PIDPoolMoveReport::ID => {
-                let _ = PIDPoolMoveReport::into_report(data).ok_or(())?;
+            Report::<PIDPoolMove>::ID => {
+                let _ = Report::<PIDPoolMove>::into_report(data).ok_or(())?;
                 Ok(Some(true))
             }
-            CreateNewEffectReport::ID => {
-                let report = CreateNewEffectReport::into_report(data).ok_or(())?;
-                self.next_effect = Some(report);
+            Report::<CreateNewEffect>::ID => {
+                let report = Report::<CreateNewEffect>::into_report(data).ok_or(())?;
+                self.next_effect = Some(*report);
                 Ok(Some(true))
             }
-            SetConfigReport::ID => {
-                self.config = SetConfigReport::into_report(data).ok_or(())?;
+            Report::<SetConfig>::ID => {
+                self.config = *Report::<SetConfig>::into_report(data).ok_or(())?;
                 Ok(Some(true))
             }
             _ => Ok(None),
@@ -210,8 +209,8 @@ impl HIDDeviceType for RacingWheel {
     }
 
     fn send_input_reports<B: UsbBus>(&mut self, writer: ReportWriter<B>) -> Result<(), UsbError> {
-        writer.write_report(self.racing_wheel_report.clone())?;
-        writer.write_report(self.pid_state_report.clone())?;
+        writer.write_report(Report(self.racing_wheel_report.clone()))?;
+        writer.write_report(Report(self.pid_state_report.clone()))?;
 
         Ok(())
     }

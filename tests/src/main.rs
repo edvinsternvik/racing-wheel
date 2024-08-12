@@ -2,7 +2,7 @@ use fixed_num::{fractional::Frac, Fixed16, Frac16};
 use force_feedback::{
     effect::{Effect, EffectParameter::*},
     ffb::calculate_force_feedback,
-    reports::{EffectType, SetConditionReport, SetEffectReport},
+    reports::{EffectType, SetCondition, SetEffect},
 };
 use std::{
     io::{stdout, Write},
@@ -23,7 +23,7 @@ fn get_bar<const N: u64>(value: Fixed16<N>, bar_len: i16) -> String {
 
 fn main() {
     let effect = Effect {
-        effect_report: Some(SetEffectReport {
+        effect_report: Some(SetEffect {
             effect_block_index: 0,
             effect_type: EffectType::Spring,
             duration: Some(10_000),
@@ -40,7 +40,7 @@ fn main() {
             type_specific_block_offset_instance_1: 0,
             type_specific_block_offset_instance_2: 0,
         }),
-        parameter_1: Some(Condition(SetConditionReport {
+        parameter_1: Some(Condition(SetCondition {
             effect_block_index: 0,
             parameter_block_offset: 0,
             type_specific_block_offset_instance_1: 0,
@@ -52,7 +52,7 @@ fn main() {
             negative_saturation: Frac::new(1, 1).convert(),
             dead_band: Frac::new(0, 1).convert(),
         })),
-        parameter_2: Some(Condition(SetConditionReport {
+        parameter_2: Some(Condition(SetCondition {
             effect_block_index: 0,
             parameter_block_offset: 0,
             type_specific_block_offset_instance_1: 0,
