@@ -1,11 +1,8 @@
-use fixed_num::Fixed16;
 use usb_device::{bus::UsbBus, UsbError};
 use usb_hid_device::{
     hid::ReportWriter,
     hid_device::{HIDDeviceType, HIDReport, HIDReportIn, ReportID, ReportType},
 };
-
-pub type PedalSignal = Fixed16<10_000>;
 
 pub struct Pedals {
     pub report: PedalsReport,
@@ -18,11 +15,11 @@ impl Pedals {
         }
     }
 
-    pub fn set_throttle(&mut self, throttle: PedalSignal) {
+    pub fn set_throttle(&mut self, throttle: f32) {
         self.report.throttle = throttle;
     }
 
-    pub fn set_brake(&mut self, brake: PedalSignal) {
+    pub fn set_brake(&mut self, brake: f32) {
         self.report.brake = brake;
     }
 }
@@ -41,8 +38,8 @@ impl HIDDeviceType for Pedals {
 // Pedals Report
 #[derive(Default, Clone)]
 pub struct PedalsReport {
-    pub throttle: PedalSignal,
-    pub brake: PedalSignal,
+    pub throttle: f32,
+    pub brake: f32,
 }
 
 impl HIDReport for PedalsReport {
@@ -52,10 +49,10 @@ impl HIDReport for PedalsReport {
 impl HIDReportIn<4> for PedalsReport {
     fn report_bytes(&self) -> [u8; 4] {
         [
-            self.throttle.value().to_le_bytes()[0],
-            self.throttle.value().to_le_bytes()[1],
-            self.brake.value().to_le_bytes()[0],
-            self.brake.value().to_le_bytes()[1],
+            ((self.throttle * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.throttle * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.brake * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.brake * 10_000.0) as i16).to_le_bytes()[1],
         ]
     }
 }

@@ -4,9 +4,8 @@ mod racing_wheel_hid;
 mod ram_pool;
 
 use crate::misc::FixedSet;
-use fixed_num::Frac16;
 use force_feedback::{
-    effect::{create_spring_effect, Effect, EffectParameter},
+    // effect::{create_spring_effect, Effect, EffectParameter},
     ffb::calculate_force_feedback,
     reports::*,
 };
@@ -21,11 +20,11 @@ pub struct RacingWheel {
     ram_pool: RAMPool<MAX_EFFECTS, CUSTOM_DATA_BUFFER_SIZE>,
     next_effect: Option<CreateNewEffect>,
     running_effects: FixedSet<RunningEffect, MAX_SIMULTANEOUS_EFFECTS>,
-    device_gain: FixedFFB,
+    device_gain: f32,
     racing_wheel_report: RacingWheelState,
     pid_state_report: PIDState,
-    steering_prev: FixedSteering,
-    steering_velocity: FixedSteering,
+    steering_prev: f32,
+    steering_velocity: f32,
     config: SetConfig,
 }
 
@@ -35,28 +34,26 @@ impl RacingWheel {
             ram_pool: RAMPool::new(),
             next_effect: None,
             running_effects: FixedSet::new(),
-            device_gain: 0.into(),
+            device_gain: 0.0,
             racing_wheel_report: RacingWheelState::default(),
             pid_state_report: PIDState::default(),
-            steering_prev: 0.into(),
-            steering_velocity: 0.into(),
-            config: SetConfig {
-                gain: Frac16::new(1, 4).convert(),
-            },
+            steering_prev: 0.0,
+            steering_velocity: 0.0,
+            config: SetConfig { gain: 0.25 },
         }
     }
 
-    // Steering angle in unit of full revolutions
-    pub fn set_steering(&mut self, steering: FixedSteering) {
-        self.racing_wheel_report.steering = steering * Frac16::new(2 * 360, DEGREES_OF_ROTATION);
+    // Steering angle (degrees)
+    pub fn set_steering(&mut self, steering: f32) {
+        self.racing_wheel_report.steering = steering * 2.0 / (DEGREES_OF_ROTATION as f32);
     }
 
     pub fn set_buttons(&mut self, buttons: [bool; 8]) {
         self.racing_wheel_report.buttons = buttons;
     }
 
-    pub fn get_force_feedback(&self) -> FixedFFB {
-        let mut total: FixedFFB = 0.into();
+    pub fn get_force_feedback(&self) -> f32 {
+        let mut total: f32 = 0.0;
 
         // Apply PID effects
         for running_effect in self.running_effects.iter() {
@@ -69,36 +66,36 @@ impl RacingWheel {
                     t,
                     self.racing_wheel_report.steering,
                     self.steering_velocity,
-                    0.into(),
+                    0.0,
                 );
                 total = total + force;
             }
         }
 
         // Apply spring effect
-        total = total + calculate_force_feedback(
-            &create_spring_effect(
-                Frac16::new(4, 1).convert(),
-                None,
-                0.into(),
-                FixedFFB::one(),
-                FixedFFB::one(),
-                Frac16::new(1, 4).convert(),
-                Frac16::new(1, 4).convert(),
-                0.into(),
-            ),
-            0,
-            self.racing_wheel_report.steering,
-            self.steering_velocity,
-            0.into(),
-        );
+        // total = total + calculate_force_feedback(
+        //     &create_spring_effect(
+        //         Frac16::new(4, 1).convert(),
+        //         None,
+        //         0.into(),
+        //         FixedFFB::one(),
+        //         FixedFFB::one(),
+        //         Frac16::new(1, 4).convert(),
+        //         Frac16::new(1, 4).convert(),
+        //         0.into(),
+        //     ),
+        //     0,
+        //     self.racing_wheel_report.steering,
+        //     self.steering_velocity,
+        //     0.into(),
+        // );
 
         total * self.device_gain * self.config.gain
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
-        self.steering_velocity =
-            (self.racing_wheel_report.steering - self.steering_prev) * delta_time_ms as i16;
+        self.steering_velocity = (self.racing_wheel_report.steering - self.steering_prev)
+            * (delta_time_ms as f32 / 1000.0);
         self.steering_prev = self.racing_wheel_report.steering;
 
         let mut still_running = FixedSet::new();

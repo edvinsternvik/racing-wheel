@@ -1,3 +1,4 @@
+use super::descriptor::LOGICAL_MAXIMUM;
 use crate::misc::{bitflag, bitflags, bits};
 use core::{
     convert::{TryFrom, TryInto},
@@ -33,10 +34,10 @@ impl HIDReportIn<6> for Report<RacingWheelState> {
         [
             Self::ID.1,
             bitflags(&self.buttons),
-            self.steering.value().to_le_bytes()[0],
-            self.steering.value().to_le_bytes()[1],
-            self.throttle.value().to_le_bytes()[0],
-            self.throttle.value().to_le_bytes()[1],
+            f32_to_2_bytes(self.steering)[0],
+            f32_to_2_bytes(self.steering)[1],
+            f32_to_2_bytes(self.throttle)[0],
+            f32_to_2_bytes(self.throttle)[1],
         ]
     }
 }
@@ -89,7 +90,7 @@ impl HIDReportRAM<19> for Report<SetEffect> {
             } else {
                 Some(sample_period)
             },
-            gain: i16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]).into(),
+            gain: f32_from_2_bytes(&ram[7..])?,
             trigger_button: *ram.get(9)?,
             axis_x_enable: bitflag(*ram.get(10)?, 0),
             axis_y_enable: bitflag(*ram.get(10)?, 1),
@@ -117,8 +118,8 @@ impl HIDReportRAM<19> for Report<SetEffect> {
             self.trigger_repeat_interval.to_le_bytes()[1],
             self.sample_period.unwrap_or_default().to_le_bytes()[0],
             self.sample_period.unwrap_or_default().to_le_bytes()[1],
-            self.gain.value().to_le_bytes()[0],
-            self.gain.value().to_le_bytes()[1],
+            ((self.gain * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.gain * 10_000.0) as i16).to_le_bytes()[1],
             self.trigger_button,
             bitflags(&[
                 self.axis_x_enable,
@@ -151,8 +152,8 @@ impl HIDReportRAM<12> for Report<SetEnvelope> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Report(SetEnvelope {
             effect_block_index,
-            attack_level: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
-            fade_level: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
+            attack_level: f32_from_2_bytes(&ram[0..])?,
+            fade_level: f32_from_2_bytes(&ram[2..])?,
             attack_time: u32::from_le_bytes([
                 *ram.get(4)?,
                 *ram.get(5)?,
@@ -170,10 +171,10 @@ impl HIDReportRAM<12> for Report<SetEnvelope> {
 
     fn to_ram(&self) -> [u8; 12] {
         [
-            self.attack_level.value().to_le_bytes()[0],
-            self.attack_level.value().to_le_bytes()[1],
-            self.fade_level.value().to_le_bytes()[0],
-            self.fade_level.value().to_le_bytes()[1],
+            ((self.attack_level * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.attack_level * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.fade_level * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.fade_level * 10_000.0) as i16).to_le_bytes()[1],
             self.attack_time.to_le_bytes()[0],
             self.attack_time.to_le_bytes()[1],
             self.attack_time.to_le_bytes()[2],
@@ -203,12 +204,12 @@ impl HIDReportRAM<13> for Report<SetCondition> {
             parameter_block_offset: bits(*ram.get(0)?, 0, 4),
             type_specific_block_offset_instance_1: bits(*ram.get(0)?, 4, 2),
             type_specific_block_offset_instance_2: bits(*ram.get(0)?, 6, 2),
-            cp_offset: i16::from_le_bytes([*ram.get(1)?, *ram.get(2)?]).into(),
-            positive_coefficient: i16::from_le_bytes([*ram.get(3)?, *ram.get(4)?]).into(),
-            negative_coefficient: i16::from_le_bytes([*ram.get(5)?, *ram.get(6)?]).into(),
-            positive_saturation: i16::from_le_bytes([*ram.get(7)?, *ram.get(8)?]).into(),
-            negative_saturation: i16::from_le_bytes([*ram.get(9)?, *ram.get(10)?]).into(),
-            dead_band: i16::from_le_bytes([*ram.get(11)?, *ram.get(12)?]).into(),
+            cp_offset: f32_from_2_bytes(&ram[1..])?,
+            positive_coefficient: f32_from_2_bytes(&ram[3..])?,
+            negative_coefficient: f32_from_2_bytes(&ram[5..])?,
+            positive_saturation: f32_from_2_bytes(&ram[7..])?,
+            negative_saturation: f32_from_2_bytes(&ram[9..])?,
+            dead_band: f32_from_2_bytes(&ram[11..])?,
         }))
     }
 
@@ -217,18 +218,18 @@ impl HIDReportRAM<13> for Report<SetCondition> {
             (self.parameter_block_offset & 0b1111) << 0
                 | (self.type_specific_block_offset_instance_1 & 0b11) << 4
                 | (self.type_specific_block_offset_instance_2 & 0b11) << 6,
-            self.cp_offset.value().to_le_bytes()[0],
-            self.cp_offset.value().to_le_bytes()[1],
-            self.positive_coefficient.value().to_le_bytes()[0],
-            self.positive_coefficient.value().to_le_bytes()[1],
-            self.negative_coefficient.value().to_le_bytes()[0],
-            self.negative_coefficient.value().to_le_bytes()[1],
-            self.positive_saturation.value().to_le_bytes()[0],
-            self.positive_saturation.value().to_le_bytes()[1],
-            self.negative_saturation.value().to_le_bytes()[0],
-            self.negative_saturation.value().to_le_bytes()[1],
-            self.dead_band.value().to_le_bytes()[0],
-            self.dead_band.value().to_le_bytes()[1],
+            ((self.cp_offset * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.cp_offset * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.positive_coefficient * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.positive_coefficient * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.negative_coefficient * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.negative_coefficient * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.positive_saturation * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.positive_saturation * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.negative_saturation * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.negative_saturation * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.dead_band * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.dead_band * 10_000.0) as i16).to_le_bytes()[1],
         ]
     }
 }
@@ -247,8 +248,8 @@ impl HIDReportRAM<10> for Report<SetPeriodic> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Report(SetPeriodic {
             effect_block_index,
-            magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
-            offset: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
+            magnitude: f32_from_2_bytes(&ram[0..])?,
+            offset: f32_from_2_bytes(&ram[2..])?,
             phase: u16::from_le_bytes([*ram.get(4)?, *ram.get(5)?]),
             period: u32::from_le_bytes([*ram.get(6)?, *ram.get(7)?, *ram.get(8)?, *ram.get(9)?]),
         }))
@@ -256,10 +257,10 @@ impl HIDReportRAM<10> for Report<SetPeriodic> {
 
     fn to_ram(&self) -> [u8; 10] {
         [
-            self.magnitude.value().to_le_bytes()[0],
-            self.magnitude.value().to_le_bytes()[1],
-            self.offset.value().to_le_bytes()[0],
-            self.offset.value().to_le_bytes()[1],
+            ((self.magnitude * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.magnitude * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.offset * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.offset * 10_000.0) as i16).to_le_bytes()[1],
             self.phase.to_le_bytes()[0],
             self.phase.to_le_bytes()[1],
             self.period.to_le_bytes()[0],
@@ -284,14 +285,14 @@ impl HIDReportRAM<2> for Report<SetConstantForce> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Report(SetConstantForce {
             effect_block_index,
-            magnitude: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
+            magnitude: f32_from_2_bytes(&ram[0..])?,
         }))
     }
 
     fn to_ram(&self) -> [u8; 2] {
         [
-            self.magnitude.value().to_le_bytes()[0],
-            self.magnitude.value().to_le_bytes()[1],
+            ((self.magnitude * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.magnitude * 10_000.0) as i16).to_le_bytes()[1],
         ]
     }
 }
@@ -310,17 +311,17 @@ impl HIDReportRAM<4> for Report<SetRampForce> {
     fn from_ram(ram: &[u8], effect_block_index: u8) -> Option<Self> {
         Some(Report(SetRampForce {
             effect_block_index,
-            ramp_start: i16::from_le_bytes([*ram.get(0)?, *ram.get(1)?]).into(),
-            ramp_end: i16::from_le_bytes([*ram.get(2)?, *ram.get(3)?]).into(),
+            ramp_start: f32_from_2_bytes(&ram[0..])?,
+            ramp_end: f32_from_2_bytes(&ram[2..])?,
         }))
     }
 
     fn to_ram(&self) -> [u8; 4] {
         [
-            self.ramp_start.value().to_le_bytes()[0],
-            self.ramp_start.value().to_le_bytes()[1],
-            self.ramp_end.value().to_le_bytes()[0],
-            self.ramp_end.value().to_le_bytes()[1],
+            ((self.ramp_start * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.ramp_start * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.ramp_end * 10_000.0) as i16).to_le_bytes()[0],
+            ((self.ramp_end * 10_000.0) as i16).to_le_bytes()[1],
         ]
     }
 }
@@ -423,7 +424,7 @@ impl HIDReport for Report<DeviceGain> {
 impl HIDReportOut for Report<DeviceGain> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Report(DeviceGain {
-            device_gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
+            device_gain: f32_from_2_bytes(&bytes[1..])?,
         }))
     }
 }
@@ -534,7 +535,15 @@ impl HIDReport for Report<SetConfig> {
 impl HIDReportOut for Report<SetConfig> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
         Some(Report(SetConfig {
-            gain: i16::from_le_bytes([*bytes.get(1)?, *bytes.get(2)?]).into(),
+            gain: f32_from_2_bytes(&bytes[1..])?,
         }))
     }
+}
+
+fn f32_from_2_bytes(bytes: &[u8]) -> Option<f32> {
+    Some(i16::from_le_bytes([*bytes.get(0)?, *bytes.get(1)?]) as f32 / LOGICAL_MAXIMUM as f32)
+}
+
+fn f32_to_2_bytes(value: f32) -> [u8; 2] {
+    ((value * LOGICAL_MAXIMUM as f32) as i16).to_le_bytes()
 }

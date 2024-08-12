@@ -8,7 +8,6 @@ mod simple_wheel;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use fixed_num::Frac16;
 use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;
@@ -20,7 +19,7 @@ use stm32f1xx_hal::usb::{Peripheral, UsbBus};
 use usb_device::device::{UsbDeviceBuilder, UsbVidPid};
 use usb_hid_device::hid::HID;
 
-const ENCODER_TO_REV: i16 = 2400;
+const ENCODER_TO_DEG: f32 = 360.0 / 2400.0;
 
 #[entry]
 fn main() -> ! {
@@ -64,7 +63,7 @@ fn main() -> ! {
     let pwm_pins = (forward_pwm_pin, reverse_pwm_pin);
     let pwm = dp
         .TIM3
-        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 16_000.Hz(), &clocks);
+        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 8_000.Hz(), &clocks);
     let (pwm_forward, pwm_reverse) = pwm.split();
     let mut motor = Motor::new(motor_enable_pin.erase(), pwm_forward, pwm_reverse);
 
@@ -102,14 +101,12 @@ fn main() -> ! {
 
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
-            let steering = Frac16::new(steering_raw, ENCODER_TO_REV);
+            let steering = steering_raw as f32 * ENCODER_TO_DEG;
             let mut buttons = [false; 8];
             buttons[0] = button_a.is_high();
             buttons[1] = button_b.is_high();
 
-            racing_wheel
-                .get_device_mut()
-                .set_steering(steering.convert());
+            racing_wheel.get_device_mut().set_steering(steering);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
             let ffb = racing_wheel.get_device().get_force_feedback();

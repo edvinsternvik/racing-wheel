@@ -14,7 +14,6 @@ panic-halt = "0.2.0"
 usb-device = "0.2.9"
 force-feedback = { path = "../lib/force-feedback" }
 usb-hid-device = { path = "../lib/usb-hid-device" }
-fixed-num = { path = "../lib/fixed-num" }
 
 [dependencies.stm32f1xx-hal]
 version = "0.10.0"

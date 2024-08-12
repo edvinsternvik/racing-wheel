@@ -1,3 +1,5 @@
+pub const LOGICAL_MAXIMUM: i32 = 10_000;
+
 #[rustfmt::skip]
 pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     // -- Joystick report --

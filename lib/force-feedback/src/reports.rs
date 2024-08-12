@@ -1,16 +1,12 @@
-use fixed_num::Fixed16;
-
 pub const FORCE_LOGICAL_MAX: i32 = 10_000;
 pub const STEERING_LOGICAL_MAX: i16 = 10_000;
-pub type FixedSteering = Fixed16<{ STEERING_LOGICAL_MAX as u64 }>;
-pub type FixedFFB = Fixed16<{ FORCE_LOGICAL_MAX as u64 }>;
 
 // Racing wheel report
 #[derive(Default, Clone)]
 pub struct RacingWheelState {
     pub buttons: [bool; 8],
-    pub steering: FixedSteering,
-    pub throttle: FixedFFB,
+    pub steering: f32,
+    pub throttle: f32,
 }
 
 // PID State Report
@@ -33,7 +29,7 @@ pub struct SetEffect {
     pub duration: Option<u16>,
     pub trigger_repeat_interval: u16,
     pub sample_period: Option<u16>,
-    pub gain: FixedFFB,
+    pub gain: f32,
     pub trigger_button: u8,
     pub axis_x_enable: bool,
     pub axis_y_enable: bool,
@@ -89,8 +85,8 @@ impl TryFrom<u8> for EffectType {
 #[derive(Clone, Copy)]
 pub struct SetEnvelope {
     pub effect_block_index: u8,
-    pub attack_level: FixedFFB,
-    pub fade_level: FixedFFB,
+    pub attack_level: f32,
+    pub fade_level: f32,
     pub attack_time: u32,
     pub fade_time: u32,
 }
@@ -102,20 +98,20 @@ pub struct SetCondition {
     pub parameter_block_offset: u8,
     pub type_specific_block_offset_instance_1: u8,
     pub type_specific_block_offset_instance_2: u8,
-    pub cp_offset: FixedFFB,
-    pub positive_coefficient: FixedFFB,
-    pub negative_coefficient: FixedFFB,
-    pub positive_saturation: FixedFFB,
-    pub negative_saturation: FixedFFB,
-    pub dead_band: FixedFFB,
+    pub cp_offset: f32,
+    pub positive_coefficient: f32,
+    pub negative_coefficient: f32,
+    pub positive_saturation: f32,
+    pub negative_saturation: f32,
+    pub dead_band: f32,
 }
 
 // Set Periodic Report
 #[derive(Clone, Copy)]
 pub struct SetPeriodic {
     pub effect_block_index: u8,
-    pub magnitude: FixedFFB,
-    pub offset: FixedFFB,
+    pub magnitude: f32,
+    pub offset: f32,
     pub phase: u16,
     pub period: u32,
 }
@@ -124,15 +120,15 @@ pub struct SetPeriodic {
 #[derive(Clone, Copy)]
 pub struct SetConstantForce {
     pub effect_block_index: u8,
-    pub magnitude: FixedFFB,
+    pub magnitude: f32,
 }
 
 // Set Ramp Force Report
 #[derive(Clone, Copy)]
 pub struct SetRampForce {
     pub effect_block_index: u8,
-    pub ramp_start: FixedFFB,
-    pub ramp_end: FixedFFB,
+    pub ramp_start: f32,
+    pub ramp_end: f32,
 }
 
 // Custom Force Data Report
@@ -220,7 +216,7 @@ impl TryFrom<u8> for DeviceControl {
 // Device Gain Report
 #[derive(Clone, Copy)]
 pub struct DeviceGain {
-    pub device_gain: FixedFFB,
+    pub device_gain: f32,
 }
 
 // Set Custom Force Report
@@ -281,5 +277,5 @@ pub struct PIDPool {
 // Set Configuration Report
 #[derive(Clone, Copy, Default)]
 pub struct SetConfig {
-    pub gain: FixedFFB,
+    pub gain: f32,
 }

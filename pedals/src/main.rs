@@ -5,7 +5,6 @@ mod pedals;
 
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
-use fixed_num::Frac16;
 use panic_halt as _;
 use pedals::Pedals;
 use stm32f1xx_hal::adc::Adc;
@@ -72,11 +71,11 @@ fn main() -> ! {
             let throttle_raw: u16 = adc_throttle.read(&mut analog_throttle_pin).unwrap();
             let brake_raw: u16 = adc_brake.read(&mut analog_brake_pin).unwrap();
 
-            let throttle = Frac16::new(throttle_raw as i16, adc_throttle.max_sample() as i16);
-            let brake = Frac16::new(brake_raw as i16, adc_brake.max_sample() as i16);
+            let throttle = throttle_raw as f32 / adc_throttle.max_sample() as f32;
+            let brake = brake_raw as f32 / adc_brake.max_sample() as f32;
 
-            pedals.get_device_mut().set_throttle(throttle.convert());
-            pedals.get_device_mut().set_brake(brake.convert());
+            pedals.get_device_mut().set_throttle(throttle);
+            pedals.get_device_mut().set_brake(brake);
 
             pedals.send_input_reports();
         }

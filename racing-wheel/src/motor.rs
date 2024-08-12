@@ -1,11 +1,8 @@
 use cortex_m::prelude::*;
-use fixed_num::{fixed::Fixed, Frac16};
 use stm32f1xx_hal::gpio::*;
 
 const MOTOR_SIGNAL_MAX: i16 = 10_000;
 const MOTOR_DEADBAND: i16 = MOTOR_SIGNAL_MAX / 1000;
-
-pub type MotorSignal = Fixed<{ MOTOR_SIGNAL_MAX as u64 }, i16>;
 
 pub struct Motor<PWMF, PWMR> {
     enable_pin: ErasedPin<Output>,
@@ -25,32 +22,32 @@ impl<PWMF: _embedded_hal_PwmPin<Duty = u16>, PWMR: _embedded_hal_PwmPin<Duty = u
 
         motor.forward_pwm.enable();
         motor.reverse_pwm.enable();
-        motor.set_speed(0.into());
+        motor.set_speed(0.0);
 
         motor
     }
 
     // Sets the speed of the motor using PWM. The signal will either be active low or active high
     // depending on the 'pwm_type'.
-    pub fn set_speed(&mut self, speed: MotorSignal) {
-        let speed = MotorSignal::clamp(
+    pub fn set_speed(&mut self, speed: f32) {
+        let speed = f32::clamp(
             speed,
-            -Frac16::new(9, 10).convert(),
-            Frac16::new(9, 10).convert(),
+            -0.4,
+            0.4,
         );
-        let speed_abs = MotorSignal::new(speed.value().abs());
+        let speed_abs = if speed >= 0.0 { speed } else { -speed };
 
-        if speed.value() > MOTOR_DEADBAND {
-            let motor_signal = speed_abs.to_frac(Self::get_max_duty(&self.forward_pwm));
+        if speed > 0.001 {
+            let motor_signal = speed_abs * Self::get_max_duty(&self.forward_pwm);
 
             self.reverse_pwm.set_duty(0);
-            self.forward_pwm.set_duty(motor_signal.value() as u16);
+            self.forward_pwm.set_duty(motor_signal as u16);
             self.enable_pin.set_high();
-        } else if speed.value() < -MOTOR_DEADBAND {
-            let motor_signal = speed_abs.to_frac(Self::get_max_duty(&self.reverse_pwm));
+        } else if speed < -0.001 {
+            let motor_signal = speed_abs * Self::get_max_duty(&self.reverse_pwm);
 
             self.forward_pwm.set_duty(0);
-            self.reverse_pwm.set_duty(motor_signal.value() as u16);
+            self.reverse_pwm.set_duty(motor_signal as u16);
             self.enable_pin.set_high();
         } else {
             self.forward_pwm.set_duty(0);
@@ -59,11 +56,11 @@ impl<PWMF: _embedded_hal_PwmPin<Duty = u16>, PWMR: _embedded_hal_PwmPin<Duty = u
         }
     }
 
-    fn get_max_duty(pwm: &impl _embedded_hal_PwmPin<Duty = u16>) -> i16 {
+    fn get_max_duty(pwm: &impl _embedded_hal_PwmPin<Duty = u16>) -> f32 {
         if pwm.get_max_duty() == 0 {
-            i16::MAX
+            i16::MAX as f32
         } else {
-            pwm.get_max_duty() as i16
+            pwm.get_max_duty() as f32
         }
     }
 }

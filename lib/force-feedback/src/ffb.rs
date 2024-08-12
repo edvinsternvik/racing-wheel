@@ -1,74 +1,72 @@
 use crate::{
     effect::{Effect, EffectParameter},
     reports::{
-        EffectType, FixedFFB, FixedSteering, SetCondition, SetConstantForce,
+        EffectType, SetCondition, SetConstantForce,
         SetEffect, SetEnvelope, SetPeriodic, SetRampForce,
     },
 };
-use fixed_num::{Frac16, FracU32};
 
 pub fn calculate_force_feedback(
     effect: &Effect,
     time: u32,
-    position: FixedSteering,
-    velocity: FixedSteering,
-    acceleration: FixedSteering,
-) -> FixedFFB {
+    position: f32,
+    velocity: f32,
+    acceleration: f32,
+) -> f32 {
     use EffectParameter::*;
 
     if let Some(duration) = effect.effect_report.map(|e| e.duration).flatten() {
         if time > duration as u32 {
-            return 0.into();
+            return 0.0;
         }
     }
 
     match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
         (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => constant_ffb(&e, &p1, &p2, time),
         (Some(e), Some(RampForce(p1)), Some(Envelope(p2))) => ramp_ffb(&e, &p1, &p2, time),
-        (Some(_), Some(CustomForce(_p)), None) => 0.into(),
+        (Some(_), Some(CustomForce(_p)), None) => 0.0,
         (Some(e), Some(Periodic(p1)), Some(Envelope(p2))) => match e.effect_type {
             EffectType::Square => periodic_ffb(&e, &p1, &p2, time, square_fn),
             EffectType::Sine => periodic_ffb(&e, &p1, &p2, time, sine_fn),
             EffectType::Triangle => periodic_ffb(&e, &p1, &p2, time, triangle_fn),
             EffectType::SawtoothUp => periodic_ffb(&e, &p1, &p2, time, sawtooth_up_fn),
             EffectType::SawtoothDown => periodic_ffb(&e, &p1, &p2, time, sawtooth_down_fn),
-            _ => 0.into(),
+            _ => 0.0,
         },
         (Some(e), Some(Condition(p1)), Some(Condition(p2))) => match e.effect_type {
             EffectType::Spring => condition_ffb(&e, &p1, &p2, position),
             EffectType::Damper => condition_ffb(&e, &p1, &p2, velocity),
             EffectType::Inertia => condition_ffb(&e, &p1, &p2, acceleration),
-            EffectType::Friction => 0.into(),
-            _ => 0.into(),
+            EffectType::Friction => 0.0,
+            _ => 0.0,
         },
-        _ => 0.into(),
+        _ => 0.0,
     }
 }
 
-fn calculate_envelope(envelope: &SetEnvelope, time: u32, duration: Option<u16>) -> FixedFFB {
-    let mut result = FixedFFB::one();
+fn calculate_envelope(envelope: &SetEnvelope, time: u32, duration: Option<u16>) -> f32 {
+    let mut result = 1.0;
     if time < envelope.attack_time {
         let fade_force = envelope.attack_level
-            + (FixedFFB::one() - envelope.attack_level) * FracU32::new(time, envelope.attack_time);
-        result = FixedFFB::min(result, fade_force);
+            + (1.0 - envelope.attack_level) * (time as f32 / envelope.attack_time as f32);
+        result = f32::min(result, fade_force);
     }
     if let Some(duration) = duration {
         let duration = duration as u32;
 
         if time <= duration && time + envelope.fade_time > duration {
             let fade_force = envelope.fade_level
-                + (FixedFFB::one() - envelope.fade_level)
-                    * FracU32::new(duration - time, envelope.fade_time);
+                + (1.0 - envelope.fade_level)
+                    * ((duration - time) as f32 / envelope.fade_time as f32);
 
-            result = FixedFFB::min(result, fade_force);
+            result = f32::min(result, fade_force);
         }
     }
 
     result
 }
 
-fn condition_force(metric: FixedSteering, condition: &SetCondition) -> FixedFFB {
-    let metric = metric.convert();
+fn condition_force(metric: f32, condition: &SetCondition) -> f32 {
     let force = if metric < condition.cp_offset - condition.dead_band {
         let velocity_delta = metric - (condition.cp_offset - condition.dead_band);
         condition.negative_coefficient * velocity_delta
@@ -76,10 +74,10 @@ fn condition_force(metric: FixedSteering, condition: &SetCondition) -> FixedFFB 
         let velocity_delta = metric - (condition.cp_offset + condition.dead_band);
         condition.positive_coefficient * velocity_delta
     } else {
-        0.into()
+        0.0
     };
 
-    FixedFFB::clamp(
+    f32::clamp(
         force,
         -condition.negative_saturation,
         condition.positive_saturation,
@@ -91,7 +89,7 @@ fn constant_ffb(
     constant_force: &SetConstantForce,
     envelope: &SetEnvelope,
     time: u32,
-) -> FixedFFB {
+) -> f32 {
     let force = constant_force.magnitude;
     let envelope = calculate_envelope(envelope, time, effect.duration);
     force * envelope * effect.gain
@@ -102,15 +100,15 @@ fn ramp_ffb(
     ramp_force: &SetRampForce,
     envelope: &SetEnvelope,
     time: u32,
-) -> FixedFFB {
+) -> f32 {
     if let Some(duration) = effect.duration {
         let force = ramp_force.ramp_start
-            + (ramp_force.ramp_end - ramp_force.ramp_start) * FracU32::new(time, duration as u32);
+            + (ramp_force.ramp_end - ramp_force.ramp_start) * (time as f32 / duration as f32);
 
         let envelope = calculate_envelope(envelope, time, effect.duration);
         force * envelope * effect.gain
     } else {
-        0.into()
+        0.0
     }
 }
 
@@ -118,8 +116,8 @@ fn condition_ffb(
     effect: &SetEffect,
     condition_1: &SetCondition,
     _condition_2: &SetCondition,
-    metric: FixedSteering,
-) -> FixedFFB {
+    metric: f32,
+) -> f32 {
     let force = condition_force(metric, condition_1);
     force * effect.gain
 }
@@ -129,11 +127,11 @@ fn periodic_ffb(
     periodic: &SetPeriodic,
     envelope: &SetEnvelope,
     time: u32,
-    f: fn(FracU32) -> Frac16,
-) -> FixedFFB {
+    f: fn(f32) -> f32,
+) -> f32 {
     let effect_time = time + ((periodic.phase as u64 * periodic.period as u64) / 36_000) as u32;
 
-    let force_norm = f(FracU32::new(effect_time, periodic.period));
+    let force_norm = f((effect_time % periodic.period) as f32 / periodic.period as f32);
     let force = periodic.magnitude * force_norm;
 
     let envelope = calculate_envelope(envelope, time, effect.duration);
@@ -141,14 +139,12 @@ fn periodic_ffb(
     force * envelope * effect.gain
 }
 
-fn square_fn(time: FracU32) -> Frac16 {
-    let t = time.value() % time.denom();
-    let period_h = time.denom() / 2;
-    let r = if t >= period_h { 1 } else { -1 };
-    Frac16::new(r, 1)
+fn square_fn(time: f32) -> f32 {
+    let t = time - (time as i64) as f32;
+    if t >= 0.5 { 1.0 } else { -1.0 }
 }
 
-fn sine_fn(time: FracU32) -> Frac16 {
+fn sine_fn(time: f32) -> f32 {
     const LUT_SAMPLES: usize = 64;
     const SIN_LUT: [i16; LUT_SAMPLES + 1] = [
         0, 804, 1607, 2410, 3211, 4011, 4807, 5601, 6392, 7179, 7961, 8739, 9511, 10278, 11038,
@@ -157,35 +153,25 @@ fn sine_fn(time: FracU32) -> Frac16 {
         27683, 28105, 28510, 28897, 29268, 29621, 29955, 30272, 30571, 30851, 31113, 31356, 31580,
         31785, 31970, 32137, 32284, 32412, 32520, 32609, 32678, 32727, 32757, 32767,
     ];
-    let period = time.denom() as u64;
-    let mut t = (time.value() as u64 % period) * 4;
-    let mut sign = 1;
-    if t >= 2 * period {
-        sign = -1;
-        t -= 2 * period;
-    }
-    if t >= period {
-        t = 2 * period - t;
-    }
-    let index = (t as u64 * LUT_SAMPLES as u64) / period as u64;
-    let force = sign * SIN_LUT[index as usize];
 
-    Frac16::new(force, i16::MAX)
+    let force_i16 = match (time * 4.0) as u8 {
+        0 => SIN_LUT[((time - 0.0) * 4.0 * LUT_SAMPLES as f32) as usize],
+        1 => SIN_LUT[((0.5 - time) * 4.0 * LUT_SAMPLES as f32) as usize],
+        2 => -SIN_LUT[((time - 0.5) * 4.0 * LUT_SAMPLES as f32) as usize],
+        _ => -SIN_LUT[((1.0 - time) * 4.0 * LUT_SAMPLES as f32) as usize],
+    };
+
+    force_i16 as f32 / i16::MAX as f32
 }
 
-fn triangle_fn(time: FracU32) -> Frac16 {
-    let period = time.denom() as i64;
-    let t = (time.value() as i64 % period) * 2;
-    let t = if t < period { t } else { 2 * period - t };
-    Frac16::new((2 * t - period) as i16, period as i16)
+fn triangle_fn(time: f32) -> f32 {
+    2.0 * if time < 0.5 { time } else { 1.0 - time }
 }
 
-fn sawtooth_up_fn(time: FracU32) -> Frac16 {
-    let period = time.denom() as i64;
-    let t = time.value() as i64 % period;
-    Frac16::new((2 * t - period) as i16, period as i16)
+fn sawtooth_up_fn(time: f32) -> f32 {
+    2.0 * if time < 0.5 { time } else { time - 1.0 }
 }
 
-fn sawtooth_down_fn(time: FracU32) -> Frac16 {
+fn sawtooth_down_fn(time: f32) -> f32 {
     -sawtooth_up_fn(time)
 }
