@@ -26,7 +26,7 @@ pub struct PIDState {
 }
 
 // Set Effect Report
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct SetEffect {
     pub effect_block_index: u8,
     pub effect_type: EffectType,
@@ -45,8 +45,9 @@ pub struct SetEffect {
     pub type_specific_block_offset_instance_2: u16,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub enum EffectType {
+    #[default]
     ConstantForce = 1,
     Ramp = 2,
     Square = 3,
@@ -95,7 +96,7 @@ pub struct SetEnvelope {
 }
 
 // Set Condition Report
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct SetCondition {
     pub effect_block_index: u8,
     pub parameter_block_offset: u8,

@@ -5,7 +5,11 @@ mod ram_pool;
 
 use crate::misc::FixedSet;
 use fixed_num::Frac16;
-use force_feedback::{ffb::calculate_force_feedback, reports::*};
+use force_feedback::{
+    effect::{create_spring_effect, Effect, EffectParameter},
+    ffb::calculate_force_feedback,
+    reports::*,
+};
 use ram_pool::RAMPool;
 
 const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
@@ -53,6 +57,8 @@ impl RacingWheel {
 
     pub fn get_force_feedback(&self) -> FixedFFB {
         let mut total: FixedFFB = 0.into();
+
+        // Apply PID effects
         for running_effect in self.running_effects.iter() {
             let effect = self.ram_pool.get_effect(running_effect.index);
             let t = running_effect.time;
@@ -68,6 +74,24 @@ impl RacingWheel {
                 total = total + force;
             }
         }
+
+        // Apply spring effect
+        total = total + calculate_force_feedback(
+            &create_spring_effect(
+                Frac16::new(4, 1).convert(),
+                None,
+                0.into(),
+                FixedFFB::one(),
+                FixedFFB::one(),
+                Frac16::new(1, 4).convert(),
+                Frac16::new(1, 4).convert(),
+                0.into(),
+            ),
+            0,
+            self.racing_wheel_report.steering,
+            self.steering_velocity,
+            0.into(),
+        );
 
         total * self.device_gain * self.config.gain
     }

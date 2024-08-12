@@ -1,5 +1,7 @@
+use core::default;
+
 use crate::reports::{
-    EffectType, SetCondition, SetConstantForce, SetCustomForce, SetEffect, SetEnvelope,
+    EffectType, FixedFFB, SetCondition, SetConstantForce, SetCustomForce, SetEffect, SetEnvelope,
     SetPeriodic, SetRampForce,
 };
 
@@ -30,4 +32,43 @@ pub enum EffectParameter {
     ConstantForce(SetConstantForce),
     RampForce(SetRampForce),
     CustomForce(SetCustomForce),
+}
+
+// Helper functions
+pub fn create_spring_effect(
+    gain: FixedFFB,
+    duration: Option<u16>,
+    cp_offset: FixedFFB,
+    positive_coefficient: FixedFFB,
+    negative_coefficient: FixedFFB,
+    positive_saturation: FixedFFB,
+    negative_saturation: FixedFFB,
+    dead_band: FixedFFB,
+) -> Effect {
+    Effect {
+        effect_report: Some(SetEffect {
+            effect_type: EffectType::Spring,
+            duration,
+            gain,
+            ..Default::default()
+        }),
+        parameter_1: Some(EffectParameter::Condition(SetCondition {
+            cp_offset,
+            positive_coefficient,
+            negative_coefficient,
+            positive_saturation,
+            negative_saturation,
+            dead_band,
+            ..Default::default()
+        })),
+        parameter_2: Some(EffectParameter::Condition(SetCondition {
+            cp_offset,
+            positive_coefficient,
+            negative_coefficient,
+            positive_saturation,
+            negative_saturation,
+            dead_band,
+            ..Default::default()
+        })),
+    }
 }
