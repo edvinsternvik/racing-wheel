@@ -14,7 +14,6 @@ use ram_pool::RAMPool;
 const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
 const MAX_EFFECTS: usize = 16;
 const MAX_SIMULTANEOUS_EFFECTS: usize = 8;
-const DEGREES_OF_ROTATION: i16 = 900;
 
 pub struct RacingWheel {
     ram_pool: RAMPool<MAX_EFFECTS, CUSTOM_DATA_BUFFER_SIZE>,
@@ -25,7 +24,7 @@ pub struct RacingWheel {
     pid_state_report: PIDState,
     steering_prev: f32,
     steering_velocity: f32,
-    config: SetConfig,
+    config: Config,
 }
 
 impl RacingWheel {
@@ -39,17 +38,21 @@ impl RacingWheel {
             pid_state_report: PIDState::default(),
             steering_prev: 0.0,
             steering_velocity: 0.0,
-            config: SetConfig { gain: 0.25 },
+            config: Config::default(),
         }
     }
 
     // Steering angle (degrees)
     pub fn set_steering(&mut self, steering: f32) {
-        self.racing_wheel_report.steering = steering * 2.0 / (DEGREES_OF_ROTATION as f32);
+        self.racing_wheel_report.steering = steering * 2.0 / (self.config.max_rotation as f32);
     }
 
     pub fn set_buttons(&mut self, buttons: [bool; 8]) {
         self.racing_wheel_report.buttons = buttons;
+    }
+
+    pub fn get_config(&self) -> Config {
+        self.config
     }
 
     pub fn get_force_feedback(&self) -> f32 {

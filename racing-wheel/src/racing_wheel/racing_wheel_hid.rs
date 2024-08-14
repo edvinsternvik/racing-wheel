@@ -61,6 +61,7 @@ impl HIDDeviceType for RacingWheel {
                 shared_parameter_blocks: false,
                 isochronous_enable: true,
             })),
+            Report::<Config>::ID => writer.accept(Report(self.get_config())),
             _ => Ok(()),
         }
     }
@@ -200,8 +201,8 @@ impl HIDDeviceType for RacingWheel {
                 self.next_effect = Some(*report);
                 Ok(Some(true))
             }
-            Report::<SetConfig>::ID => {
-                self.config = *Report::<SetConfig>::into_report(data).ok_or(())?;
+            Report::<Config>::ID => {
+                self.config = *Report::<Config>::into_report(data).ok_or(())?;
                 Ok(Some(true))
             }
             _ => Ok(None),

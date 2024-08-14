@@ -528,15 +528,55 @@ impl HIDReportIn<12> for Report<PIDPool> {
     }
 }
 
-impl HIDReport for Report<SetConfig> {
+impl HIDReport for Report<Config> {
     const ID: ReportID = ReportID(ReportType::Feature, 0x04);
 }
 
-impl HIDReportOut for Report<SetConfig> {
+impl HIDReportOut for Report<Config> {
     fn into_report(bytes: &[u8]) -> Option<Self> {
-        Some(Report(SetConfig {
-            gain: f32_from_2_bytes(&bytes[1..])?,
+        Some(Report(Config {
+            gain: f32::from_le_bytes([
+                *bytes.get(1)?,
+                *bytes.get(2)?,
+                *bytes.get(3)?,
+                *bytes.get(4)?,
+            ]),
+            max_rotation: u16::from_le_bytes([*bytes.get(5)?, *bytes.get(6)?]),
+            motor_max: f32::from_le_bytes([
+                *bytes.get(7)?,
+                *bytes.get(8)?,
+                *bytes.get(9)?,
+                *bytes.get(10)?,
+            ]),
+            motor_deadband: f32::from_le_bytes([
+                *bytes.get(11)?,
+                *bytes.get(12)?,
+                *bytes.get(13)?,
+                *bytes.get(14)?,
+            ]),
         }))
+    }
+}
+
+impl HIDReportIn<15> for Report<Config> {
+    fn report_bytes(&self) -> [u8; 15] {
+        [
+            Self::ID.1,
+            f32::to_le_bytes(self.gain)[0],
+            f32::to_le_bytes(self.gain)[1],
+            f32::to_le_bytes(self.gain)[2],
+            f32::to_le_bytes(self.gain)[3],
+            u16::to_le_bytes(self.max_rotation)[0],
+            u16::to_le_bytes(self.max_rotation)[1],
+            f32::to_le_bytes(self.motor_max)[0],
+            f32::to_le_bytes(self.motor_max)[1],
+            f32::to_le_bytes(self.motor_max)[2],
+            f32::to_le_bytes(self.motor_max)[3],
+            f32::to_le_bytes(self.motor_deadband)[0],
+            f32::to_le_bytes(self.motor_deadband)[1],
+            f32::to_le_bytes(self.motor_deadband)[2],
+            f32::to_le_bytes(self.motor_deadband)[3],
+        ]
     }
 }
 

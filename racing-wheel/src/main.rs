@@ -112,7 +112,8 @@ fn main() -> ! {
             let ffb = racing_wheel.get_device().get_force_feedback();
             racing_wheel.get_device_mut().advance(10);
 
-            motor.set_speed(ffb);
+            let config = racing_wheel.get_device().get_config();
+            motor.set_speed(ffb, config.motor_max, config.motor_deadband);
 
             racing_wheel.send_input_reports();
         }
