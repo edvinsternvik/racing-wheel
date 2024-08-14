@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod config;
 mod misc;
 mod motor;
 mod racing_wheel;
@@ -11,6 +12,7 @@ use cortex_m_rt::entry;
 use motor::Motor;
 use panic_halt as _;
 use racing_wheel::RacingWheel;
+use stm32f1xx_hal::flash::{FlashSize, SectorSize};
 use stm32f1xx_hal::gpio::*;
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
@@ -94,6 +96,9 @@ fn main() -> ! {
     // Setup report timer
     let mut report_timer = dp.TIM2.counter_us(&clocks);
     report_timer.start(10.millis()).unwrap();
+
+    // Setup flash writer
+    let mut _flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
 
     // Poll USB and send state reports
     loop {

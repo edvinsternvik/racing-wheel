@@ -273,23 +273,3 @@ pub struct PIDPool {
     pub shared_parameter_blocks: bool,
     pub isochronous_enable: bool,
 }
-
-// Set Configuration Report
-#[derive(Clone, Copy)]
-pub struct Config {
-    pub gain: f32,
-    pub max_rotation: u16,
-    pub motor_max: f32,
-    pub motor_deadband: f32,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            gain: 0.25,
-            max_rotation: 900,
-            motor_max: 0.1,
-            motor_deadband: 0.001,
-        }
-    }
-}

@@ -3,7 +3,7 @@ mod hid_reports;
 mod racing_wheel_hid;
 mod ram_pool;
 
-use crate::misc::FixedSet;
+use crate::{config::Config, misc::FixedSet};
 use force_feedback::{
     // effect::{create_spring_effect, Effect, EffectParameter},
     ffb::calculate_force_feedback,
@@ -38,7 +38,7 @@ impl RacingWheel {
             pid_state_report: PIDState::default(),
             steering_prev: 0.0,
             steering_velocity: 0.0,
-            config: Config::default(),
+            config: Config::read_from_memory(),
         }
     }
 

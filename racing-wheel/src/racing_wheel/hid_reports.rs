@@ -1,5 +1,8 @@
 use super::descriptor::LOGICAL_MAXIMUM;
-use crate::misc::{bitflag, bitflags, bits};
+use crate::{
+    config::Config,
+    misc::{bitflag, bitflags, bits},
+};
 use core::{
     convert::{TryFrom, TryInto},
     ops::{Deref, DerefMut},
