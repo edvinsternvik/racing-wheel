@@ -2,7 +2,7 @@ use super::{
     descriptor::RACING_WHEEL_DESCRIPTOR, hid_reports::Report, RacingWheel, RunningEffect,
     MAX_SIMULTANEOUS_EFFECTS,
 };
-use crate::{config::Config, misc::FixedSet};
+use crate::{config::{Config, WheelDeviceControl}, misc::FixedSet};
 use force_feedback::{effect::EffectParameter, reports::*};
 use usb_device::{bus::UsbBus, UsbError};
 use usb_hid_device::{
@@ -203,6 +203,14 @@ impl HIDDeviceType for RacingWheel {
             }
             Report::<Config>::ID => {
                 self.config = *Report::<Config>::into_report(data).ok_or(())?;
+                Ok(Some(true))
+            }
+            Report::<WheelDeviceControl>::ID => {
+                match *Report::<WheelDeviceControl>::into_report(data).ok_or(())? {
+                    WheelDeviceControl::Reboot => {},
+                    WheelDeviceControl::ResetRotation => {},
+                    WheelDeviceControl::WriteConfig => self.write_config = true,
+                }
                 Ok(Some(true))
             }
             _ => Ok(None),

@@ -25,6 +25,7 @@ pub struct RacingWheel {
     steering_prev: f32,
     steering_velocity: f32,
     config: Config,
+    write_config: bool,
 }
 
 impl RacingWheel {
@@ -39,6 +40,7 @@ impl RacingWheel {
             steering_prev: 0.0,
             steering_velocity: 0.0,
             config: Config::read_from_memory(),
+            write_config: false,
         }
     }
 
@@ -53,6 +55,12 @@ impl RacingWheel {
 
     pub fn get_config(&self) -> Config {
         self.config
+    }
+
+    pub fn write_config_event(&mut self) -> bool {
+        let write_config = self.write_config;
+        self.write_config = false;
+        write_config
     }
 
     pub fn get_force_feedback(&self) -> f32 {

@@ -98,11 +98,18 @@ fn main() -> ! {
     report_timer.start(10.millis()).unwrap();
 
     // Setup flash writer
-    let mut _flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
+    let mut flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
 
     // Poll USB and send state reports
     loop {
         usb_device.poll(&mut [&mut racing_wheel]);
+
+        if racing_wheel.get_device_mut().write_config_event() {
+            racing_wheel
+                .get_device()
+                .get_config()
+                .write_to_memory(&mut flash_writer);
+        }
 
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;

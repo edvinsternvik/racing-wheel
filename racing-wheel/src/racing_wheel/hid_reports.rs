@@ -1,6 +1,6 @@
 use super::descriptor::LOGICAL_MAXIMUM;
 use crate::{
-    config::Config,
+    config::{Config, WheelDeviceControl},
     misc::{bitflag, bitflags, bits},
 };
 use core::{
@@ -580,6 +580,18 @@ impl HIDReportIn<15> for Report<Config> {
             f32::to_le_bytes(self.motor_deadband)[2],
             f32::to_le_bytes(self.motor_deadband)[3],
         ]
+    }
+}
+
+impl HIDReport for Report<WheelDeviceControl> {
+    const ID: ReportID = ReportID(ReportType::Feature, 0x05);
+}
+
+impl HIDReportOut for Report<WheelDeviceControl> {
+    fn into_report(bytes: &[u8]) -> Option<Self> {
+        WheelDeviceControl::try_from(*bytes.get(1)?)
+            .map(|wdc| Report(wdc))
+            .ok()
     }
 }
 
