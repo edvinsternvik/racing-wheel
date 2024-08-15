@@ -170,7 +170,7 @@ impl HIDDeviceType for RacingWheel {
                         self.pid_state_report.actuators_enabled = false
                     }
                     DeviceControl::StopAllEffects => self.running_effects = FixedSet::new(),
-                    DeviceControl::DeviceReset => *self = Self::new(),
+                    DeviceControl::DeviceReset => *self = Self::new(self.config),
                     DeviceControl::DevicePause => self.pid_state_report.device_paused = true,
                     DeviceControl::DeviceContinue => self.pid_state_report.device_paused = false,
                 }

@@ -7,6 +7,7 @@ mod motor;
 mod racing_wheel;
 mod simple_wheel;
 
+use config::Config;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use motor::Motor;
@@ -73,6 +74,10 @@ fn main() -> ! {
     let button_a = gpiob.pb10.into_pull_down_input(&mut gpiob.crh);
     let button_b = gpiob.pb11.into_pull_down_input(&mut gpiob.crh);
 
+    // Setup config
+    let mut flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
+    let config = Config::read_from_memory(&flash_writer);
+
     // Setup USB
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
     usb_dp.set_low();
@@ -85,7 +90,7 @@ fn main() -> ! {
     };
     let usb_bus = UsbBus::new(usb_peripheral);
 
-    let mut racing_wheel = HID::new(&usb_bus, RacingWheel::new());
+    let mut racing_wheel = HID::new(&usb_bus, RacingWheel::new(config));
 
     let mut usb_device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0xF055, 0x5555))
         .manufacturer("Edvin")
@@ -97,8 +102,6 @@ fn main() -> ! {
     let mut report_timer = dp.TIM2.counter_us(&clocks);
     report_timer.start(10.millis()).unwrap();
 
-    // Setup flash writer
-    let mut flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
 
     // Poll USB and send state reports
     loop {

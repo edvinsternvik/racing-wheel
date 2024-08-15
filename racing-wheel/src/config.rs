@@ -1,5 +1,4 @@
 use core::convert::TryFrom;
-
 use stm32f1xx_hal::flash::{FlashWriter, FLASH_START};
 
 const CONFIG_PAGE_PADDING: usize = 1024 - ::core::mem::size_of::<Config>();
@@ -32,8 +31,12 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn read_from_memory() -> Config {
-        CONFIG_PAGE.config
+    pub fn read_from_memory(flash_writer: &FlashWriter) -> Config {
+        let address = (&CONFIG_PAGE.config as *const Config) as u32 - FLASH_START;
+        let conf_bytes = flash_writer.read(address, size_of::<Config>()).unwrap();
+        let conf = unsafe { *(conf_bytes.as_ptr() as *const Config) };
+
+        conf
     }
 
     pub fn write_to_memory(&self, flash_writer: &mut FlashWriter) {
@@ -44,9 +47,9 @@ impl Config {
             )
         };
 
-        let address = (&CONFIG_PAGE as *const ConfigPage) as u32 - FLASH_START;
+        let address = (&CONFIG_PAGE.config as *const Config) as u32 - FLASH_START;
         let _ = flash_writer.page_erase(address);
-        let _ = flash_writer.write(address, config_bytes);
+        let _ =  flash_writer.write(address, config_bytes);
     }
 }
 

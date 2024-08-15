@@ -29,7 +29,7 @@ pub struct RacingWheel {
 }
 
 impl RacingWheel {
-    pub fn new() -> Self {
+    pub fn new(config: Config) -> Self {
         RacingWheel {
             ram_pool: RAMPool::new(),
             next_effect: None,
@@ -39,7 +39,7 @@ impl RacingWheel {
             pid_state_report: PIDState::default(),
             steering_prev: 0.0,
             steering_velocity: 0.0,
-            config: Config::read_from_memory(),
+            config,
             write_config: false,
         }
     }
