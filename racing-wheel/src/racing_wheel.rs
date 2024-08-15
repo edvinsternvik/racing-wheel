@@ -25,7 +25,9 @@ pub struct RacingWheel {
     steering_prev: f32,
     steering_velocity: f32,
     config: Config,
-    write_config: bool,
+    write_config_event: bool,
+    reboot_device_event: bool,
+    reset_steering_event: bool,
 }
 
 impl RacingWheel {
@@ -40,7 +42,9 @@ impl RacingWheel {
             steering_prev: 0.0,
             steering_velocity: 0.0,
             config,
-            write_config: false,
+            write_config_event: false,
+            reboot_device_event: false,
+            reset_steering_event: false,
         }
     }
 
@@ -58,9 +62,29 @@ impl RacingWheel {
     }
 
     pub fn write_config_event(&mut self) -> bool {
-        let write_config = self.write_config;
-        self.write_config = false;
+        let write_config = self.write_config_event;
+        self.write_config_event = false;
         write_config
+    }
+
+    pub fn reboot_device_event(&mut self) -> bool {
+        let reboot_device = self.reboot_device_event;
+        self.reboot_device_event = false;
+        reboot_device
+    }
+
+    pub fn reset_steering_event(&mut self) -> bool {
+        if self.reset_steering_event {
+            self.reset_steering_event = false;
+
+            self.racing_wheel_report.steering = 0.0;
+            self.steering_prev = 0.0;
+            self.steering_velocity = 0.0;
+
+            return true;
+        }
+
+        false
     }
 
     pub fn get_force_feedback(&self) -> f32 {

@@ -15,7 +15,7 @@ use panic_halt as _;
 use racing_wheel::RacingWheel;
 use stm32f1xx_hal::flash::{FlashSize, SectorSize};
 use stm32f1xx_hal::gpio::*;
-use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
+use stm32f1xx_hal::pac::{Peripherals as HALPeripherals, SCB};
 use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::timer::Tim3NoRemap;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
@@ -102,11 +102,12 @@ fn main() -> ! {
     let mut report_timer = dp.TIM2.counter_us(&clocks);
     report_timer.start(10.millis()).unwrap();
 
-
-    // Poll USB and send state reports
+    // Main loop
     loop {
+        // Poll usb
         usb_device.poll(&mut [&mut racing_wheel]);
 
+        // Handle events
         if racing_wheel.get_device_mut().write_config_event() {
             racing_wheel
                 .get_device()
@@ -114,6 +115,15 @@ fn main() -> ! {
                 .write_to_memory(&mut flash_writer);
         }
 
+        if racing_wheel.get_device_mut().reboot_device_event() {
+            SCB::sys_reset()
+        }
+
+        if racing_wheel.get_device_mut().reset_steering_event() {
+            dp.TIM4.cnt.reset();
+        }
+
+        // Update state
         if report_timer.wait().is_ok() {
             let steering_raw = dp.TIM4.cnt.read().cnt().bits() as i16;
             let steering = steering_raw as f32 * ENCODER_TO_DEG;
