@@ -10,6 +10,8 @@ const CONFIG_PAGE: ConfigPage = ConfigPage {
         max_rotation: 900,
         motor_max: 0.1,
         motor_deadband: 0.001,
+        motor_frequency_hz: 8000,
+        update_frequency_hz: 100,
     },
     _padding: [0; CONFIG_PAGE_PADDING],
 };
@@ -28,6 +30,8 @@ pub struct Config {
     pub max_rotation: u16,
     pub motor_max: f32,
     pub motor_deadband: f32,
+    pub motor_frequency_hz: u16,
+    pub update_frequency_hz: u16,
 }
 
 impl Config {

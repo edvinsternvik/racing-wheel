@@ -55,6 +55,10 @@ fn main() -> ! {
 
     assert!(clocks.usbclk_valid());
 
+    // Setup config
+    let mut flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
+    let config = Config::read_from_memory(&flash_writer);
+
     // Setup motor
     let mut gpioa = dp.GPIOA.split();
     let mut afio = dp.AFIO.constrain();
@@ -64,19 +68,18 @@ fn main() -> ! {
     let reverse_pwm_pin = gpioa.pa7.into_alternate_push_pull(&mut gpioa.crl);
     let forward_pwm_pin = gpioa.pa6.into_alternate_push_pull(&mut gpioa.crl);
     let pwm_pins = (forward_pwm_pin, reverse_pwm_pin);
-    let pwm = dp
-        .TIM3
-        .pwm_hz::<Tim3NoRemap, _, _>(pwm_pins, &mut afio.mapr, 8_000.Hz(), &clocks);
+    let pwm = dp.TIM3.pwm_hz::<Tim3NoRemap, _, _>(
+        pwm_pins,
+        &mut afio.mapr,
+        (config.motor_frequency_hz as u32).Hz(),
+        &clocks,
+    );
     let (pwm_forward, pwm_reverse) = pwm.split();
     let mut motor = Motor::new(motor_enable_pin.erase(), pwm_forward, pwm_reverse);
 
     // Setup buttons
     let button_a = gpiob.pb10.into_pull_down_input(&mut gpiob.crh);
     let button_b = gpiob.pb11.into_pull_down_input(&mut gpiob.crh);
-
-    // Setup config
-    let mut flash_writer = flash.writer(SectorSize::Sz1K, FlashSize::Sz128K);
-    let config = Config::read_from_memory(&flash_writer);
 
     // Setup USB
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
@@ -100,7 +103,8 @@ fn main() -> ! {
 
     // Setup report timer
     let mut report_timer = dp.TIM2.counter_us(&clocks);
-    report_timer.start(10.millis()).unwrap();
+    let update_dt_ms = 1_000 / config.update_frequency_hz as u32;
+    report_timer.start(update_dt_ms.millis()).unwrap();
 
     // Main loop
     loop {
@@ -135,7 +139,7 @@ fn main() -> ! {
             racing_wheel.get_device_mut().set_buttons(buttons);
 
             let ffb = racing_wheel.get_device().get_force_feedback();
-            racing_wheel.get_device_mut().advance(10);
+            racing_wheel.get_device_mut().advance(update_dt_ms);
 
             let config = racing_wheel.get_device().get_config();
             motor.set_speed(ffb, config.motor_max, config.motor_deadband);

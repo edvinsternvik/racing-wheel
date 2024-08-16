@@ -557,12 +557,14 @@ impl HIDReportOut for Report<Config> {
                 *bytes.get(13)?,
                 *bytes.get(14)?,
             ]),
+            motor_frequency_hz: u16::from_le_bytes([*bytes.get(15)?, *bytes.get(16)?]),
+            update_frequency_hz: u16::from_le_bytes([*bytes.get(17)?, *bytes.get(18)?]),
         }))
     }
 }
 
-impl HIDReportIn<15> for Report<Config> {
-    fn report_bytes(&self) -> [u8; 15] {
+impl HIDReportIn<19> for Report<Config> {
+    fn report_bytes(&self) -> [u8; 19] {
         [
             Self::ID.1,
             f32::to_le_bytes(self.gain)[0],
@@ -579,6 +581,10 @@ impl HIDReportIn<15> for Report<Config> {
             f32::to_le_bytes(self.motor_deadband)[1],
             f32::to_le_bytes(self.motor_deadband)[2],
             f32::to_le_bytes(self.motor_deadband)[3],
+            u16::to_le_bytes(self.motor_frequency_hz)[0],
+            u16::to_le_bytes(self.motor_frequency_hz)[1],
+            u16::to_le_bytes(self.update_frequency_hz)[0],
+            u16::to_le_bytes(self.update_frequency_hz)[1],
         ]
     }
 }
