@@ -6,6 +6,7 @@ mod ram_pool;
 use crate::{config::Config, misc::FixedSet};
 use force_feedback::{
     // effect::{create_spring_effect, Effect, EffectParameter},
+    effect::create_spring_effect,
     ffb::calculate_force_feedback,
     reports::*,
 };
@@ -108,22 +109,23 @@ impl RacingWheel {
         }
 
         // Apply spring effect
-        // total = total + calculate_force_feedback(
-        //     &create_spring_effect(
-        //         Frac16::new(4, 1).convert(),
-        //         None,
-        //         0.into(),
-        //         FixedFFB::one(),
-        //         FixedFFB::one(),
-        //         Frac16::new(1, 4).convert(),
-        //         Frac16::new(1, 4).convert(),
-        //         0.into(),
-        //     ),
-        //     0,
-        //     self.racing_wheel_report.steering,
-        //     self.steering_velocity,
-        //     0.into(),
-        // );
+        total = total
+            + calculate_force_feedback(
+                &create_spring_effect(
+                    self.config.spring_gain,
+                    None,
+                    0.0,
+                    self.config.spring_coefficient,
+                    self.config.spring_coefficient,
+                    self.config.spring_saturation,
+                    self.config.spring_saturation,
+                    self.config.spring_deadband,
+                ),
+                0,
+                self.racing_wheel_report.steering,
+                0.0,
+                0.0,
+            );
 
         total * self.device_gain * self.config.gain
     }

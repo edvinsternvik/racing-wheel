@@ -545,26 +545,50 @@ impl HIDReportOut for Report<Config> {
                 *bytes.get(4)?,
             ]),
             max_rotation: u16::from_le_bytes([*bytes.get(5)?, *bytes.get(6)?]),
-            motor_max: f32::from_le_bytes([
+            spring_gain: f32::from_le_bytes([
                 *bytes.get(7)?,
                 *bytes.get(8)?,
                 *bytes.get(9)?,
                 *bytes.get(10)?,
             ]),
-            motor_deadband: f32::from_le_bytes([
+            spring_coefficient: f32::from_le_bytes([
                 *bytes.get(11)?,
                 *bytes.get(12)?,
                 *bytes.get(13)?,
                 *bytes.get(14)?,
             ]),
-            motor_frequency_hz: u16::from_le_bytes([*bytes.get(15)?, *bytes.get(16)?]),
-            update_frequency_hz: u16::from_le_bytes([*bytes.get(17)?, *bytes.get(18)?]),
+            spring_saturation: f32::from_le_bytes([
+                *bytes.get(15)?,
+                *bytes.get(16)?,
+                *bytes.get(17)?,
+                *bytes.get(18)?,
+            ]),
+            spring_deadband: f32::from_le_bytes([
+                *bytes.get(19)?,
+                *bytes.get(20)?,
+                *bytes.get(21)?,
+                *bytes.get(22)?,
+            ]),
+            motor_max: f32::from_le_bytes([
+                *bytes.get(23)?,
+                *bytes.get(24)?,
+                *bytes.get(25)?,
+                *bytes.get(26)?,
+            ]),
+            motor_deadband: f32::from_le_bytes([
+                *bytes.get(27)?,
+                *bytes.get(28)?,
+                *bytes.get(29)?,
+                *bytes.get(30)?,
+            ]),
+            motor_frequency_hz: u16::from_le_bytes([*bytes.get(31)?, *bytes.get(32)?]),
+            update_frequency_hz: u16::from_le_bytes([*bytes.get(33)?, *bytes.get(34)?]),
         }))
     }
 }
 
-impl HIDReportIn<19> for Report<Config> {
-    fn report_bytes(&self) -> [u8; 19] {
+impl HIDReportIn<35> for Report<Config> {
+    fn report_bytes(&self) -> [u8; 35] {
         [
             Self::ID.1,
             f32::to_le_bytes(self.gain)[0],
@@ -573,6 +597,22 @@ impl HIDReportIn<19> for Report<Config> {
             f32::to_le_bytes(self.gain)[3],
             u16::to_le_bytes(self.max_rotation)[0],
             u16::to_le_bytes(self.max_rotation)[1],
+            f32::to_le_bytes(self.spring_gain)[0],
+            f32::to_le_bytes(self.spring_gain)[1],
+            f32::to_le_bytes(self.spring_gain)[2],
+            f32::to_le_bytes(self.spring_gain)[3],
+            f32::to_le_bytes(self.spring_coefficient)[0],
+            f32::to_le_bytes(self.spring_coefficient)[1],
+            f32::to_le_bytes(self.spring_coefficient)[2],
+            f32::to_le_bytes(self.spring_coefficient)[3],
+            f32::to_le_bytes(self.spring_saturation)[0],
+            f32::to_le_bytes(self.spring_saturation)[1],
+            f32::to_le_bytes(self.spring_saturation)[2],
+            f32::to_le_bytes(self.spring_saturation)[3],
+            f32::to_le_bytes(self.spring_deadband)[0],
+            f32::to_le_bytes(self.spring_deadband)[1],
+            f32::to_le_bytes(self.spring_deadband)[2],
+            f32::to_le_bytes(self.spring_deadband)[3],
             f32::to_le_bytes(self.motor_max)[0],
             f32::to_le_bytes(self.motor_max)[1],
             f32::to_le_bytes(self.motor_max)[2],

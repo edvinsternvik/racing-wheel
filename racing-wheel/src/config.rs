@@ -6,11 +6,15 @@ const CONFIG_PAGE_PADDING: usize = 1024 - ::core::mem::size_of::<Config>();
 // Page in flash memory where the config is stored
 const CONFIG_PAGE: ConfigPage = ConfigPage {
     config: Config {
-        gain: 0.1,
+        gain: 0.5,
         max_rotation: 900,
-        motor_max: 0.1,
-        motor_deadband: 0.001,
-        motor_frequency_hz: 8000,
+        spring_gain: 0.42,
+        spring_coefficient: 20.0,
+        spring_saturation: 0.5,
+        spring_deadband: 0.0001,
+        motor_max: 0.3,
+        motor_deadband: 0.0001,
+        motor_frequency_hz: 20_000,
         update_frequency_hz: 100,
     },
     _padding: [0; CONFIG_PAGE_PADDING],
@@ -28,6 +32,10 @@ struct ConfigPage {
 pub struct Config {
     pub gain: f32,
     pub max_rotation: u16,
+    pub spring_gain: f32,
+    pub spring_coefficient: f32,
+    pub spring_saturation: f32,
+    pub spring_deadband: f32,
     pub motor_max: f32,
     pub motor_deadband: f32,
     pub motor_frequency_hz: u16,
