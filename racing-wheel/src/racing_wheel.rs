@@ -10,6 +10,7 @@ use force_feedback::{
     ffb::calculate_force_feedback,
     reports::*,
 };
+use micromath::F32Ext;
 use ram_pool::RAMPool;
 
 const CUSTOM_DATA_BUFFER_SIZE: usize = 4096;
@@ -127,7 +128,8 @@ impl RacingWheel {
                 0.0,
             );
 
-        total * self.device_gain * self.config.gain
+        let ffb = total * self.device_gain * self.config.gain * self.config.motor_max;
+        f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo)
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
