@@ -131,6 +131,16 @@ impl RacingWheel {
                 0.0,
             );
 
+        // Apply virtual end stop effect
+        total = total
+            + calculate_force_feedback(
+                &create_spring_effect(1.0, None, 0.0, 10.0, 10.0, 10.0, 10.0, 0.99),
+                0,
+                self.racing_wheel_report.steering,
+                0.0,
+                0.0,
+            );
+
         let ffb = total * self.device_gain * self.config.gain * self.config.motor_max;
         f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo)
     }
