@@ -26,6 +26,7 @@ pub struct RacingWheel {
     pid_state_report: PIDState,
     steering_prev: f32,
     steering_velocity: f32,
+    steering_vel_prev: f32,
     config: Config,
     write_config_event: bool,
     reboot_device_event: bool,
@@ -43,6 +44,7 @@ impl RacingWheel {
             pid_state_report: PIDState::default(),
             steering_prev: 0.0,
             steering_velocity: 0.0,
+            steering_vel_prev: 0.0,
             config,
             write_config_event: false,
             reboot_device_event: false,
@@ -82,6 +84,7 @@ impl RacingWheel {
             self.racing_wheel_report.steering = 0.0;
             self.steering_prev = 0.0;
             self.steering_velocity = 0.0;
+            self.steering_vel_prev = 0.0;
 
             return true;
         }
@@ -133,9 +136,15 @@ impl RacingWheel {
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
+        let d_smooth = 0.1;
+
         self.steering_velocity = (self.racing_wheel_report.steering - self.steering_prev)
-            * (delta_time_ms as f32 / 1000.0);
+            * (1000.0 / delta_time_ms as f32)
+            * d_smooth
+            + self.steering_vel_prev * (1.0 - d_smooth);
+
         self.steering_prev = self.racing_wheel_report.steering;
+        self.steering_vel_prev = self.steering_velocity;
 
         let mut still_running = FixedSet::new();
         for running_effect in self.running_effects.iter_mut() {
