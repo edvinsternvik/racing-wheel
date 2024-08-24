@@ -2,10 +2,8 @@ use super::{
     descriptor::RACING_WHEEL_DESCRIPTOR, hid_reports::Report, RacingWheel, RunningEffect,
     MAX_SIMULTANEOUS_EFFECTS,
 };
-use crate::{
-    config::{Config, WheelDeviceControl},
-    misc::FixedSet,
-};
+use crate::misc::FixedSet;
+use config::{config::Config, control::WheelDeviceControl};
 use force_feedback::{effect::EffectParameter, reports::*};
 use usb_device::{bus::UsbBus, UsbError};
 use usb_hid_device::{

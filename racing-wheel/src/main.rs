@@ -2,12 +2,13 @@
 #![no_main]
 
 mod config;
-mod misc;
 mod motor;
 mod racing_wheel;
 mod simple_wheel;
+mod misc;
 
-use config::Config;
+use crate::config::FlashMemoryData;
+use ::config::config::Config;
 use cortex_m::asm::delay;
 use cortex_m_rt::entry;
 use motor::Motor;

@@ -3,13 +3,9 @@ mod hid_reports;
 mod racing_wheel_hid;
 mod ram_pool;
 
-use crate::{config::Config, misc::FixedSet};
-use force_feedback::{
-    // effect::{create_spring_effect, Effect, EffectParameter},
-    effect::create_spring_effect,
-    ffb::calculate_force_feedback,
-    reports::*,
-};
+use crate::misc::FixedSet;
+use config::config::Config;
+use force_feedback::{effect::create_spring_effect, ffb::calculate_force_feedback, reports::*};
 use micromath::F32Ext;
 use ram_pool::RAMPool;
 
