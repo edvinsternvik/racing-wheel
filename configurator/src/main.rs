@@ -1,3 +1,4 @@
+use config::{config::Config, control::WheelDeviceControl};
 use hidapi::{HidApi, HidDevice};
 use std::slice::Iter;
 
@@ -16,74 +17,12 @@ enum Error {
     ParseError,
 }
 
-#[derive(Debug)]
-struct Configuration {
-    gain: f32,
-    expo: f32,
-    max_rotation: u16,
-    spring_gain: f32,
-    spring_coefficient: f32,
-    spring_saturation: f32,
-    spring_deadband: f32,
-    motor_max: f32,
-    motor_deadband: f32,
-    motor_frequency_hz: u16,
-    update_frequency_hz: u16,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum WheelDeviceControl {
-    Reboot = 0x01,
-    ResetRotation = 0x02,
-    WriteConfig = 0x03,
-}
-
-fn send_config(device: &HidDevice, config: Configuration) -> Result<(), Error> {
-    let buf = [
-        CONFIG_REPORT_ID,
-        f32::to_le_bytes(config.gain)[0],
-        f32::to_le_bytes(config.gain)[1],
-        f32::to_le_bytes(config.gain)[2],
-        f32::to_le_bytes(config.gain)[3],
-        f32::to_le_bytes(config.expo)[0],
-        f32::to_le_bytes(config.expo)[1],
-        f32::to_le_bytes(config.expo)[2],
-        f32::to_le_bytes(config.expo)[3],
-        u16::to_le_bytes(config.max_rotation)[0],
-        u16::to_le_bytes(config.max_rotation)[1],
-        f32::to_le_bytes(config.spring_gain)[0],
-        f32::to_le_bytes(config.spring_gain)[1],
-        f32::to_le_bytes(config.spring_gain)[2],
-        f32::to_le_bytes(config.spring_gain)[3],
-        f32::to_le_bytes(config.spring_coefficient)[0],
-        f32::to_le_bytes(config.spring_coefficient)[1],
-        f32::to_le_bytes(config.spring_coefficient)[2],
-        f32::to_le_bytes(config.spring_coefficient)[3],
-        f32::to_le_bytes(config.spring_saturation)[0],
-        f32::to_le_bytes(config.spring_saturation)[1],
-        f32::to_le_bytes(config.spring_saturation)[2],
-        f32::to_le_bytes(config.spring_saturation)[3],
-        f32::to_le_bytes(config.spring_deadband)[0],
-        f32::to_le_bytes(config.spring_deadband)[1],
-        f32::to_le_bytes(config.spring_deadband)[2],
-        f32::to_le_bytes(config.spring_deadband)[3],
-        f32::to_le_bytes(config.motor_max)[0],
-        f32::to_le_bytes(config.motor_max)[1],
-        f32::to_le_bytes(config.motor_max)[2],
-        f32::to_le_bytes(config.motor_max)[3],
-        f32::to_le_bytes(config.motor_deadband)[0],
-        f32::to_le_bytes(config.motor_deadband)[1],
-        f32::to_le_bytes(config.motor_deadband)[2],
-        f32::to_le_bytes(config.motor_deadband)[3],
-        u16::to_le_bytes(config.motor_frequency_hz)[0],
-        u16::to_le_bytes(config.motor_frequency_hz)[1],
-        u16::to_le_bytes(config.update_frequency_hz)[0],
-        u16::to_le_bytes(config.update_frequency_hz)[1],
-    ];
+fn send_config(device: &HidDevice, config: Config) -> Result<(), Error> {
+    let buf = config.into_bytes(CONFIG_REPORT_ID);
     device.send_feature_report(&buf).or(Err(Error::SendError))
 }
 
-fn read_config(device: &HidDevice) -> Result<Configuration, Error> {
+fn read_config(device: &HidDevice) -> Result<Config, Error> {
     let mut buf = [0; 39];
     buf[0] = CONFIG_REPORT_ID;
 
@@ -92,22 +31,11 @@ fn read_config(device: &HidDevice) -> Result<Configuration, Error> {
         .or(Err(Error::ReadError))?;
 
     if bytes_read != buf.len() {
+        println!("{}", bytes_read);
         return Err(Error::ReadError);
     }
 
-    Ok(Configuration {
-        gain: f32::from_le_bytes([buf[1], buf[2], buf[3], buf[4]]),
-        expo: f32::from_le_bytes([buf[5], buf[6], buf[7], buf[8]]),
-        max_rotation: u16::from_le_bytes([buf[9], buf[10]]),
-        spring_gain: f32::from_le_bytes([buf[11], buf[12], buf[13], buf[14]]),
-        spring_coefficient: f32::from_le_bytes([buf[15], buf[16], buf[17], buf[18]]),
-        spring_saturation: f32::from_le_bytes([buf[19], buf[20], buf[21], buf[22]]),
-        spring_deadband: f32::from_le_bytes([buf[23], buf[24], buf[25], buf[26]]),
-        motor_max: f32::from_le_bytes([buf[27], buf[28], buf[29], buf[30]]),
-        motor_deadband: f32::from_le_bytes([buf[31], buf[32], buf[33], buf[34]]),
-        motor_frequency_hz: u16::from_le_bytes([buf[35], buf[36]]),
-        update_frequency_hz: u16::from_le_bytes([buf[37], buf[38]]),
-    })
+    Config::from_bytes(&buf[1..]).ok_or(Error::ParseError)
 }
 
 fn set_option(mut args: Iter<String>) -> Result<(), Error> {
