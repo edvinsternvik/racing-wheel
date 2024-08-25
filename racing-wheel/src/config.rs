@@ -6,15 +6,15 @@ const CONFIG_PAGE_PADDING: usize = 1024 - ::core::mem::size_of::<Config>();
 // Page in flash memory where the config is stored
 const CONFIG_PAGE: ConfigPage = ConfigPage {
     config: Config {
-        gain: 0.25,
-        expo: 0.7,
+        gain: 0.3,
+        expo: 0.8,
         max_rotation: 360,
-        spring_gain: 0.27,
-        spring_coefficient: 10.0,
+        spring_gain: 0.45,
+        spring_coefficient: 8.0,
         spring_saturation: 1.0,
         spring_deadband: 0.0001,
-        damper_gain: 0.6,
-        damper_coefficient: 0.2,
+        damper_gain: 0.8,
+        damper_coefficient: 0.4,
         damper_saturation: 1.0,
         damper_deadband: 0.0001,
         motor_max: 0.8,
