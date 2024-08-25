@@ -8,6 +8,10 @@ pub struct Config {
     pub spring_coefficient: f32,
     pub spring_saturation: f32,
     pub spring_deadband: f32,
+    pub damper_gain: f32,
+    pub damper_coefficient: f32,
+    pub damper_saturation: f32,
+    pub damper_deadband: f32,
     pub motor_max: f32,
     pub motor_deadband: f32,
     pub motor_frequency_hz: u16,
@@ -15,7 +19,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn into_bytes(&self, id: u8) -> [u8; 39] {
+    pub fn into_bytes(&self, id: u8) -> [u8; 55] {
         [
             id,
             f32::to_le_bytes(self.gain)[0],
@@ -44,6 +48,22 @@ impl Config {
             f32::to_le_bytes(self.spring_deadband)[1],
             f32::to_le_bytes(self.spring_deadband)[2],
             f32::to_le_bytes(self.spring_deadband)[3],
+            f32::to_le_bytes(self.damper_gain)[0],
+            f32::to_le_bytes(self.damper_gain)[1],
+            f32::to_le_bytes(self.damper_gain)[2],
+            f32::to_le_bytes(self.damper_gain)[3],
+            f32::to_le_bytes(self.damper_coefficient)[0],
+            f32::to_le_bytes(self.damper_coefficient)[1],
+            f32::to_le_bytes(self.damper_coefficient)[2],
+            f32::to_le_bytes(self.damper_coefficient)[3],
+            f32::to_le_bytes(self.damper_saturation)[0],
+            f32::to_le_bytes(self.damper_saturation)[1],
+            f32::to_le_bytes(self.damper_saturation)[2],
+            f32::to_le_bytes(self.damper_saturation)[3],
+            f32::to_le_bytes(self.damper_deadband)[0],
+            f32::to_le_bytes(self.damper_deadband)[1],
+            f32::to_le_bytes(self.damper_deadband)[2],
+            f32::to_le_bytes(self.damper_deadband)[3],
             f32::to_le_bytes(self.motor_max)[0],
             f32::to_le_bytes(self.motor_max)[1],
             f32::to_le_bytes(self.motor_max)[2],
@@ -98,20 +118,44 @@ impl Config {
                 *bytes.get(24)?,
                 *bytes.get(25)?,
             ]),
-            motor_max: f32::from_le_bytes([
+            damper_gain: f32::from_le_bytes([
                 *bytes.get(26)?,
                 *bytes.get(27)?,
                 *bytes.get(28)?,
                 *bytes.get(29)?,
             ]),
-            motor_deadband: f32::from_le_bytes([
+            damper_coefficient: f32::from_le_bytes([
                 *bytes.get(30)?,
                 *bytes.get(31)?,
                 *bytes.get(32)?,
                 *bytes.get(33)?,
             ]),
-            motor_frequency_hz: u16::from_le_bytes([*bytes.get(34)?, *bytes.get(35)?]),
-            update_frequency_hz: u16::from_le_bytes([*bytes.get(36)?, *bytes.get(37)?]),
+            damper_saturation: f32::from_le_bytes([
+                *bytes.get(34)?,
+                *bytes.get(35)?,
+                *bytes.get(36)?,
+                *bytes.get(37)?,
+            ]),
+            damper_deadband: f32::from_le_bytes([
+                *bytes.get(38)?,
+                *bytes.get(39)?,
+                *bytes.get(40)?,
+                *bytes.get(41)?,
+            ]),
+            motor_max: f32::from_le_bytes([
+                *bytes.get(42)?,
+                *bytes.get(43)?,
+                *bytes.get(44)?,
+                *bytes.get(45)?,
+            ]),
+            motor_deadband: f32::from_le_bytes([
+                *bytes.get(46)?,
+                *bytes.get(47)?,
+                *bytes.get(48)?,
+                *bytes.get(49)?,
+            ]),
+            motor_frequency_hz: u16::from_le_bytes([*bytes.get(50)?, *bytes.get(51)?]),
+            update_frequency_hz: u16::from_le_bytes([*bytes.get(52)?, *bytes.get(53)?]),
         })
     }
 }

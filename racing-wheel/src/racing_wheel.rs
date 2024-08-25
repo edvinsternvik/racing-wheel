@@ -5,7 +5,7 @@ mod ram_pool;
 
 use crate::misc::FixedSet;
 use config::config::Config;
-use force_feedback::{effect::create_spring_effect, ffb::calculate_force_feedback, reports::*};
+use force_feedback::{effect::{create_damper_effect, create_spring_effect}, ffb::calculate_force_feedback, reports::*};
 use micromath::F32Ext;
 use ram_pool::RAMPool;
 
@@ -126,6 +126,25 @@ impl RacingWheel {
                 0.0,
                 0.0,
             );
+        
+        // Apply damper effect
+        total = total
+            + calculate_force_feedback(
+                &create_damper_effect(
+                    self.config.damper_gain,
+                    None,
+                    0.0,
+                    self.config.damper_coefficient,
+                    self.config.damper_coefficient,
+                    self.config.damper_saturation,
+                    self.config.damper_saturation,
+                    self.config.damper_deadband,
+                ),
+                0,
+                0.0,
+                self.steering_velocity,
+                0.0,
+            );
 
         // Apply virtual end stop effect
         total = total
@@ -136,6 +155,7 @@ impl RacingWheel {
                 0.0,
                 0.0,
             );
+
 
         let ffb = total * self.device_gain * self.config.gain * self.config.motor_max;
         f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo)

@@ -23,7 +23,7 @@ fn send_config(device: &HidDevice, config: Config) -> Result<(), Error> {
 }
 
 fn read_config(device: &HidDevice) -> Result<Config, Error> {
-    let mut buf = [0; 39];
+    let mut buf = [0; 55];
     buf[0] = CONFIG_REPORT_ID;
 
     let bytes_read = device
@@ -58,6 +58,14 @@ fn set_option(mut args: Iter<String>) -> Result<(), Error> {
             config.spring_saturation = value.parse().or(Err(Error::ParseError))?
         }
         "spring_deadband" => config.spring_deadband = value.parse().or(Err(Error::ParseError))?,
+        "damper_gain" => config.damper_gain = value.parse().or(Err(Error::ParseError))?,
+        "damper_coefficient" => {
+            config.damper_coefficient = value.parse().or(Err(Error::ParseError))?
+        }
+        "damper_saturation" => {
+            config.damper_saturation = value.parse().or(Err(Error::ParseError))?
+        }
+        "damper_deadband" => config.damper_deadband = value.parse().or(Err(Error::ParseError))?,
         "motor_max" => config.motor_max = value.parse().or(Err(Error::ParseError))?,
         "motor_deadband" => config.motor_deadband = value.parse().or(Err(Error::ParseError))?,
         "motor_frequency_hz" => {
