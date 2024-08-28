@@ -3,6 +3,7 @@
 pub struct Config {
     pub gain: f32,
     pub expo: f32,
+    pub derivative_smoothing: f32,
     pub max_rotation: u16,
     pub spring_gain: f32,
     pub spring_coefficient: f32,
@@ -19,7 +20,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn into_bytes(&self, id: u8) -> [u8; 55] {
+    pub fn into_bytes(&self, id: u8) -> [u8; 59] {
         [
             id,
             f32::to_le_bytes(self.gain)[0],
@@ -30,6 +31,10 @@ impl Config {
             f32::to_le_bytes(self.expo)[1],
             f32::to_le_bytes(self.expo)[2],
             f32::to_le_bytes(self.expo)[3],
+            f32::to_le_bytes(self.derivative_smoothing)[0],
+            f32::to_le_bytes(self.derivative_smoothing)[1],
+            f32::to_le_bytes(self.derivative_smoothing)[2],
+            f32::to_le_bytes(self.derivative_smoothing)[3],
             u16::to_le_bytes(self.max_rotation)[0],
             u16::to_le_bytes(self.max_rotation)[1],
             f32::to_le_bytes(self.spring_gain)[0],
@@ -93,69 +98,75 @@ impl Config {
                 *bytes.get(6)?,
                 *bytes.get(7)?,
             ]),
-            max_rotation: u16::from_le_bytes([*bytes.get(8)?, *bytes.get(9)?]),
-            spring_gain: f32::from_le_bytes([
+            derivative_smoothing: f32::from_le_bytes([
+                *bytes.get(8)?,
+                *bytes.get(9)?,
                 *bytes.get(10)?,
                 *bytes.get(11)?,
-                *bytes.get(12)?,
-                *bytes.get(13)?,
             ]),
-            spring_coefficient: f32::from_le_bytes([
+            max_rotation: u16::from_le_bytes([*bytes.get(12)?, *bytes.get(13)?]),
+            spring_gain: f32::from_le_bytes([
                 *bytes.get(14)?,
                 *bytes.get(15)?,
                 *bytes.get(16)?,
                 *bytes.get(17)?,
             ]),
-            spring_saturation: f32::from_le_bytes([
+            spring_coefficient: f32::from_le_bytes([
                 *bytes.get(18)?,
                 *bytes.get(19)?,
                 *bytes.get(20)?,
                 *bytes.get(21)?,
             ]),
-            spring_deadband: f32::from_le_bytes([
+            spring_saturation: f32::from_le_bytes([
                 *bytes.get(22)?,
                 *bytes.get(23)?,
                 *bytes.get(24)?,
                 *bytes.get(25)?,
             ]),
-            damper_gain: f32::from_le_bytes([
+            spring_deadband: f32::from_le_bytes([
                 *bytes.get(26)?,
                 *bytes.get(27)?,
                 *bytes.get(28)?,
                 *bytes.get(29)?,
             ]),
-            damper_coefficient: f32::from_le_bytes([
+            damper_gain: f32::from_le_bytes([
                 *bytes.get(30)?,
                 *bytes.get(31)?,
                 *bytes.get(32)?,
                 *bytes.get(33)?,
             ]),
-            damper_saturation: f32::from_le_bytes([
+            damper_coefficient: f32::from_le_bytes([
                 *bytes.get(34)?,
                 *bytes.get(35)?,
                 *bytes.get(36)?,
                 *bytes.get(37)?,
             ]),
-            damper_deadband: f32::from_le_bytes([
+            damper_saturation: f32::from_le_bytes([
                 *bytes.get(38)?,
                 *bytes.get(39)?,
                 *bytes.get(40)?,
                 *bytes.get(41)?,
             ]),
-            motor_max: f32::from_le_bytes([
+            damper_deadband: f32::from_le_bytes([
                 *bytes.get(42)?,
                 *bytes.get(43)?,
                 *bytes.get(44)?,
                 *bytes.get(45)?,
             ]),
-            motor_deadband: f32::from_le_bytes([
+            motor_max: f32::from_le_bytes([
                 *bytes.get(46)?,
                 *bytes.get(47)?,
                 *bytes.get(48)?,
                 *bytes.get(49)?,
             ]),
-            motor_frequency_hz: u16::from_le_bytes([*bytes.get(50)?, *bytes.get(51)?]),
-            update_frequency_hz: u16::from_le_bytes([*bytes.get(52)?, *bytes.get(53)?]),
+            motor_deadband: f32::from_le_bytes([
+                *bytes.get(50)?,
+                *bytes.get(51)?,
+                *bytes.get(52)?,
+                *bytes.get(53)?,
+            ]),
+            motor_frequency_hz: u16::from_le_bytes([*bytes.get(54)?, *bytes.get(55)?]),
+            update_frequency_hz: u16::from_le_bytes([*bytes.get(56)?, *bytes.get(57)?]),
         })
     }
 }

@@ -5,7 +5,11 @@ mod ram_pool;
 
 use crate::misc::FixedSet;
 use config::config::Config;
-use force_feedback::{effect::{create_damper_effect, create_spring_effect}, ffb::calculate_force_feedback, reports::*};
+use force_feedback::{
+    effect::{create_damper_effect, create_spring_effect},
+    ffb::calculate_force_feedback,
+    reports::*,
+};
 use micromath::F32Ext;
 use ram_pool::RAMPool;
 
@@ -126,7 +130,7 @@ impl RacingWheel {
                 0.0,
                 0.0,
             );
-        
+
         // Apply damper effect
         total = total
             + calculate_force_feedback(
@@ -156,18 +160,15 @@ impl RacingWheel {
                 0.0,
             );
 
-
         let ffb = total * self.device_gain * self.config.gain * self.config.motor_max;
         f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo)
     }
 
     pub fn advance(&mut self, delta_time_ms: u32) {
-        let d_smooth = 0.1;
-
         self.steering_velocity = (self.racing_wheel_report.steering - self.steering_prev)
             * (1000.0 / delta_time_ms as f32)
-            * d_smooth
-            + self.steering_vel_prev * (1.0 - d_smooth);
+            * (1.0 - self.config.derivative_smoothing)
+            + self.steering_vel_prev * self.config.derivative_smoothing;
 
         self.steering_prev = self.racing_wheel_report.steering;
         self.steering_vel_prev = self.steering_velocity;

@@ -540,8 +540,8 @@ impl HIDReportOut for Report<Config> {
     }
 }
 
-impl HIDReportIn<55> for Report<Config> {
-    fn report_bytes(&self) -> [u8; 55] {
+impl HIDReportIn<59> for Report<Config> {
+    fn report_bytes(&self) -> [u8; 59] {
         self.into_bytes(Self::ID.1)
     }
 }

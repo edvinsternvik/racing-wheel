@@ -23,7 +23,7 @@ fn send_config(device: &HidDevice, config: Config) -> Result<(), Error> {
 }
 
 fn read_config(device: &HidDevice) -> Result<Config, Error> {
-    let mut buf = [0; 55];
+    let mut buf = [0; 59];
     buf[0] = CONFIG_REPORT_ID;
 
     let bytes_read = device
@@ -49,6 +49,9 @@ fn set_option(mut args: Iter<String>) -> Result<(), Error> {
     match option.as_str() {
         "gain" => config.gain = value.parse().or(Err(Error::ParseError))?,
         "expo" => config.expo = value.parse().or(Err(Error::ParseError))?,
+        "derivative_smoothing" => {
+            config.derivative_smoothing = value.parse().or(Err(Error::ParseError))?
+        }
         "max_rotation" => config.max_rotation = value.parse().or(Err(Error::ParseError))?,
         "spring_gain" => config.spring_gain = value.parse().or(Err(Error::ParseError))?,
         "spring_coefficient" => {
