@@ -13,6 +13,7 @@ pub struct Config {
     pub damper_coefficient: f32,
     pub damper_saturation: f32,
     pub damper_deadband: f32,
+    pub motor_min: f32,
     pub motor_max: f32,
     pub motor_deadband: f32,
     pub motor_frequency_hz: u16,
@@ -20,7 +21,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn into_bytes(&self, id: u8) -> [u8; 59] {
+    pub fn into_bytes(&self, id: u8) -> [u8; 63] {
         [
             id,
             f32::to_le_bytes(self.gain)[0],
@@ -69,6 +70,10 @@ impl Config {
             f32::to_le_bytes(self.damper_deadband)[1],
             f32::to_le_bytes(self.damper_deadband)[2],
             f32::to_le_bytes(self.damper_deadband)[3],
+            f32::to_le_bytes(self.motor_min)[0],
+            f32::to_le_bytes(self.motor_min)[1],
+            f32::to_le_bytes(self.motor_min)[2],
+            f32::to_le_bytes(self.motor_min)[3],
             f32::to_le_bytes(self.motor_max)[0],
             f32::to_le_bytes(self.motor_max)[1],
             f32::to_le_bytes(self.motor_max)[2],
@@ -153,20 +158,26 @@ impl Config {
                 *bytes.get(44)?,
                 *bytes.get(45)?,
             ]),
-            motor_max: f32::from_le_bytes([
+            motor_min: f32::from_le_bytes([
                 *bytes.get(46)?,
                 *bytes.get(47)?,
                 *bytes.get(48)?,
                 *bytes.get(49)?,
             ]),
-            motor_deadband: f32::from_le_bytes([
+            motor_max: f32::from_le_bytes([
                 *bytes.get(50)?,
                 *bytes.get(51)?,
                 *bytes.get(52)?,
                 *bytes.get(53)?,
             ]),
-            motor_frequency_hz: u16::from_le_bytes([*bytes.get(54)?, *bytes.get(55)?]),
-            update_frequency_hz: u16::from_le_bytes([*bytes.get(56)?, *bytes.get(57)?]),
+            motor_deadband: f32::from_le_bytes([
+                *bytes.get(54)?,
+                *bytes.get(55)?,
+                *bytes.get(56)?,
+                *bytes.get(57)?,
+            ]),
+            motor_frequency_hz: u16::from_le_bytes([*bytes.get(58)?, *bytes.get(59)?]),
+            update_frequency_hz: u16::from_le_bytes([*bytes.get(60)?, *bytes.get(61)?]),
         })
     }
 }

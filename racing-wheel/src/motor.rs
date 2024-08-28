@@ -19,26 +19,26 @@ impl<PWMF: _embedded_hal_PwmPin<Duty = u16>, PWMR: _embedded_hal_PwmPin<Duty = u
 
         motor.forward_pwm.enable();
         motor.reverse_pwm.enable();
-        motor.set_speed(0.0, 0.0, 1.0);
+        motor.set_speed(0.0, (0.0, 0.0), 1.0);
 
         motor
     }
 
-    // Sets the speed of the motor using PWM. The signal will either be active low or active high
-    // depending on the 'pwm_type'.
-    pub fn set_speed(&mut self, speed: f32, max_speed: f32, deadband: f32) {
-        let max_speed = f32::clamp(max_speed, 0.0, 1.0);
-        let speed = f32::clamp(speed, -max_speed, max_speed);
+    pub fn set_speed(&mut self, speed: f32, speed_range: (f32, f32), deadband: f32) {
+        let max_speed = f32::clamp(speed_range.1, 0.0, 1.0);
+        let min_speed = f32::clamp(speed_range.0, 0.0, max_speed);
+        let speed = f32::clamp(speed, -1.0, 1.0);
         let speed_abs = if speed >= 0.0 { speed } else { -speed };
+        let speed_signal = speed_abs * (max_speed - min_speed) + min_speed;
 
         if speed > deadband {
-            let motor_signal = speed_abs * Self::get_max_duty(&self.forward_pwm);
+            let motor_signal = speed_signal * Self::get_max_duty(&self.forward_pwm);
 
             self.reverse_pwm.set_duty(0);
             self.forward_pwm.set_duty(motor_signal as u16);
             self.enable_pin.set_high();
         } else if speed < -deadband {
-            let motor_signal = speed_abs * Self::get_max_duty(&self.reverse_pwm);
+            let motor_signal = speed_signal * Self::get_max_duty(&self.reverse_pwm);
 
             self.forward_pwm.set_duty(0);
             self.reverse_pwm.set_duty(motor_signal as u16);

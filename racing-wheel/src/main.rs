@@ -2,10 +2,10 @@
 #![no_main]
 
 mod config;
+mod misc;
 mod motor;
 mod racing_wheel;
 mod simple_wheel;
-mod misc;
 
 use crate::config::FlashMemoryData;
 use ::config::config::Config;
@@ -143,7 +143,11 @@ fn main() -> ! {
             racing_wheel.get_device_mut().advance(update_dt_ms);
 
             let config = racing_wheel.get_device().get_config();
-            motor.set_speed(ffb, config.motor_max, config.motor_deadband);
+            motor.set_speed(
+                ffb,
+                (config.motor_min, config.motor_max),
+                config.motor_deadband,
+            );
 
             racing_wheel.send_input_reports();
         }

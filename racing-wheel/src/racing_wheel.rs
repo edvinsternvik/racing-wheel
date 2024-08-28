@@ -160,7 +160,7 @@ impl RacingWheel {
                 0.0,
             );
 
-        let ffb = total * self.device_gain * self.config.gain * self.config.motor_max;
+        let ffb = total * self.device_gain * self.config.gain;
         f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo)
     }
 
