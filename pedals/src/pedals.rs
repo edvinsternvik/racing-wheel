@@ -4,6 +4,8 @@ use usb_hid_device::{
     hid_device::{HIDDeviceType, HIDReport, HIDReportIn, ReportID, ReportType},
 };
 
+const LOGICAL_MAX: i16 = 32767;
+
 pub struct Pedals {
     pub report: PedalsReport,
 }
@@ -49,10 +51,10 @@ impl HIDReport for PedalsReport {
 impl HIDReportIn<4> for PedalsReport {
     fn report_bytes(&self) -> [u8; 4] {
         [
-            ((self.throttle * 10_000.0) as i16).to_le_bytes()[0],
-            ((self.throttle * 10_000.0) as i16).to_le_bytes()[1],
-            ((self.brake * 10_000.0) as i16).to_le_bytes()[0],
-            ((self.brake * 10_000.0) as i16).to_le_bytes()[1],
+            ((self.throttle * LOGICAL_MAX as f32) as i16).to_le_bytes()[0],
+            ((self.throttle * LOGICAL_MAX as f32) as i16).to_le_bytes()[1],
+            ((self.brake * LOGICAL_MAX as f32) as i16).to_le_bytes()[0],
+            ((self.brake * LOGICAL_MAX as f32) as i16).to_le_bytes()[1],
         ]
     }
 }
@@ -65,9 +67,9 @@ const PEDALS_DESCRIPTOR: &[u8] = &[
     0xA1, 0x01,        // Collection (Application)
     0x05, 0x02,        //   USAGE_PAGE (Simulation Controls)
     0x15, 0x00,        //   Logical Minimum (0)
-    0x26, 0x10, 0x27,  //   Logical Maximum (10000)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
     0x35, 0x00,        //   Physical Minimum (0)
-    0x46, 0x10, 0x27,  //   Physical Maximum (10000)
+    0x46, 0xFF, 0x7F,  //   Physical Maximum (32767)
     0x75, 0x10,        //   REPORT_SIZE (16)
     0x95, 0x02,        //   REPORT_COUNT (2)
     0xA1, 0x00,        //   COLLECTION (Physical)
