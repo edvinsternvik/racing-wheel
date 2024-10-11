@@ -9,7 +9,7 @@ use cortex_m_rt::entry;
 use hx711::HX711;
 use panic_halt as _;
 use pedals::Pedals;
-use stm32f1xx_hal::gpio::*;
+use stm32f1xx_hal::{adc, gpio::*};
 use stm32f1xx_hal::pac::Peripherals as HALPeripherals;
 use stm32f1xx_hal::prelude::*;
 use stm32f1xx_hal::usb::{Peripheral, UsbBus};
@@ -31,9 +31,15 @@ fn main() -> ! {
         .pclk1(24.MHz())
         .adcclk(2.MHz())
         .freeze(&mut flash.acr);
+    
+    let mut gpioa = dp.GPIOA.split();
+
+    // Setup hall effect sensor
+    let mut adc1 = adc::Adc::adc1(dp.ADC1, clocks);
+    let mut hall_effect_pin = gpioa.pa5.into_analog(&mut gpioa.crl);
+
 
     // Setup load cell
-    let mut gpioa = dp.GPIOA.split();
 
     let d_out = gpioa.pa6.into_floating_input(&mut gpioa.crl).erase();
     let pd_sck = gpioa.pa7.into_push_pull_output(&mut gpioa.crl).erase();
@@ -73,6 +79,11 @@ fn main() -> ! {
         }
 
         if report_timer.wait().is_ok() {
+            let throttle_raw: u16 = adc1.read(&mut hall_effect_pin).unwrap();
+            let (data_min, data_max) = (1940.0, 3200.0);
+            let throttle = (throttle_raw as f32 - data_min) / (data_max - data_min);
+            pedals.get_device_mut().set_throttle(throttle);
+
             pedals.send_input_reports();
         }
     }
