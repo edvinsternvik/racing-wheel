@@ -117,6 +117,49 @@ fn read_config_action() -> Result<(), Error> {
     Ok(())
 }
 
+fn print_help() -> Result<(), Error> {
+    println!(
+    r#"
+    USAGE:
+        configurator COMMAND
+
+    COMMAND:
+        config CONFIG_COMMAND       Set some configuration option, see CONFIG_COMMAND for the
+                                    list of config commands.
+        control CONTROL_COMMAND     Perform some control action, see CONTROL_COMMAND for the list
+                                    of control commands.
+        read_config                 Read the current configuration options.
+        help                        Display this help page.
+
+    CONFIG_COMMAND:
+        gain <g>                    Set the motor gain.
+        expo <e>                    Set the motor expo.
+        derivative_smoothing <ds>   Set the derivative smoothing.
+        max_rotation <mr>           Set the max rotation.
+        spring_gain <sg>            Set the spring gain.
+        spring_coefficient <sc>     Set the spring coefficient.
+        spring_saturation <ss>      Set the spring saturation.
+        spring_deadband <sd>        Set the spring deadband.
+        damper_gain <dg>            Set the damper gain.
+        damper_coefficient <dc>     Set the damper coefficient.
+        damper_saturation <ds>      Set the damper saturation.
+        damper_deadband <dd>        Set the damper deadband.
+        motor_min <mm>              Set the motor min.
+        motor_max <mm>              Set the motor max.
+        motor_deadband <md>         Set the motor deadband.
+        motor_frequency_hz <mf>     Set the motor frequency.
+        update_frequency_hz <uf>    Set the update frequency.
+
+    CONTROL_COMMAND:
+        reboot                      Reboot the device.
+        reset_rotation              Reset the rotation to zero at the current position.
+        write_config                Write the currently set configuration to the device to keep it
+    "#
+    );
+
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -124,6 +167,7 @@ fn main() {
         "config" => set_option(args[2..].iter()),
         "control" => send_control_command(args[2..].iter()),
         "read_config" => read_config_action(),
+        "help" => print_help(),
         "" => Err(Error::NotEnoughArguments),
         _ => Err(Error::InvalidArgument),
     };
@@ -134,8 +178,8 @@ fn main() {
         Err(Error::DeviceError) => eprintln!("Error: Could not open usb device"),
         Err(Error::SendError) => eprintln!("Error: Could not send to device"),
         Err(Error::ReadError) => eprintln!("Error: Could not read from device"),
-        Err(Error::InvalidArgument) => eprintln!("Error: Invalid argument"),
-        Err(Error::NotEnoughArguments) => eprintln!("Error: Not enough arguments"),
-        Err(Error::ParseError) => eprintln!("Error: Parse error"),
+        Err(Error::InvalidArgument) => eprintln!("Error: Invalid argument, try `configurator help` to see help page"),
+        Err(Error::NotEnoughArguments) => eprintln!("Error: Not enough arguments, try `configurator help` to see help page"),
+        Err(Error::ParseError) => eprintln!("Error: Parse error, try `configurator help` to see help page"),
     }
 }
