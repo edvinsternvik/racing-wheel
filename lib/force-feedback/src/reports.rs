@@ -10,7 +10,7 @@ pub struct RacingWheelState {
 }
 
 // PID State Report
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct PIDState {
     pub device_paused: bool,
     pub actuators_enabled: bool,
@@ -19,6 +19,20 @@ pub struct PIDState {
     pub actuator_power: bool,
     pub effect_playing: bool,
     pub effect_block_index: u8,
+}
+
+impl Default for PIDState {
+    fn default() -> Self {
+        PIDState {
+            device_paused: false,
+            actuators_enabled: true,
+            safety_switch: false,
+            actuators_override_switch: false,
+            actuator_power: true,
+            effect_playing: false,
+            effect_block_index: 0,
+        }
+    }
 }
 
 // Set Effect Report
