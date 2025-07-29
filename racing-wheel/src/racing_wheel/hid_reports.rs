@@ -30,8 +30,8 @@ impl HIDReport for Report<RacingWheelState> {
     const ID: ReportID = ReportID(ReportType::Input, 0x01);
 }
 
-impl HIDReportIn<6> for Report<RacingWheelState> {
-    fn report_bytes(&self) -> [u8; 6] {
+impl HIDReportIn<8> for Report<RacingWheelState> {
+    fn report_bytes(&self) -> [u8; 8] {
         [
             Self::ID.1,
             bitflags(&self.buttons),
@@ -39,6 +39,8 @@ impl HIDReportIn<6> for Report<RacingWheelState> {
             f32_to_2_bytes(self.steering)[1],
             f32_to_2_bytes(self.throttle)[0],
             f32_to_2_bytes(self.throttle)[1],
+            f32_to_2_bytes(self.ffb)[0],
+            f32_to_2_bytes(self.ffb)[1],
         ]
     }
 }

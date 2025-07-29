@@ -1,6 +1,7 @@
 use config::{config::Config, control::WheelDeviceControl};
 use hidapi::{HidApi, HidDevice};
 use std::slice::Iter;
+use force_feedback::reports::RacingWheelState;
 
 const USB_VID: u16 = 0xF055;
 const USB_PID: u16 = 0x5555;
@@ -160,6 +161,35 @@ fn print_help() -> Result<(), Error> {
     Ok(())
 }
 
+fn read_state() -> Result<(), Error> {
+    let hid = HidApi::new().or(Err(Error::UsbHidError))?;
+    let device = hid.open(USB_VID, USB_PID).or(Err(Error::DeviceError))?;
+    let mut buf = [0; std::mem::size_of::<RacingWheelState>()];
+
+    loop {
+        device
+            .read(&mut buf)
+            .or(Err(Error::ReadError))?;
+
+        let mut racing_wheel_state = RacingWheelState {
+            buttons: [false; 8],
+            steering: f32_from_2_bytes(&buf[2..4]).unwrap(),
+            throttle: f32_from_2_bytes(&buf[4..6]).unwrap(),
+            ffb: f32_from_2_bytes(&buf[6..8]).unwrap(),
+        };
+        racing_wheel_state.buttons[0] = (buf[1] & 1) != 0;
+        racing_wheel_state.buttons[1] = (buf[1] & 2) != 0;
+
+        println!("{} {} {} {}", -racing_wheel_state.steering, racing_wheel_state.buttons[0], racing_wheel_state.buttons[1], racing_wheel_state.ffb);
+    }
+}
+
+
+pub const LOGICAL_MAXIMUM: i32 = 10_000;
+fn f32_from_2_bytes(bytes: &[u8]) -> Option<f32> {
+    Some(i16::from_le_bytes([*bytes.get(0)?, *bytes.get(1)?]) as f32 / LOGICAL_MAXIMUM as f32)
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -167,6 +197,7 @@ fn main() {
         "config" => set_option(args[2..].iter()),
         "control" => send_control_command(args[2..].iter()),
         "read_config" => read_config_action(),
+        "read_state" => read_state(),
         "help" => print_help(),
         "" => Err(Error::NotEnoughArguments),
         _ => Err(Error::InvalidArgument),

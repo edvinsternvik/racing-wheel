@@ -38,6 +38,22 @@ pub const RACING_WHEEL_DESCRIPTOR: &[u8] = &[
     0x55, 0x00,        //     Unit Exponent (0)
     0x65, 0x00,        //     Unit (None)
 
+    0x05, 0x55,        //     Usage Page (Edvin racing wheel)
+    0x16, 0xF0, 0xD8,  //     Logical Minimum (-10000)
+    0x26, 0x10, 0x27,  //     Logical Maximum (10000)
+    0x36, 0xF0, 0xD8,  //     Physical Minimum (-10000)
+    0x46, 0x10, 0x27,  //     Physical Maximum (10000)
+    0x75, 0x10,        //     Report Size (16)
+    0x95, 0x01,        //     Report Count (1)
+    0x65, 0x00,        //     Unit (None)
+    0x55, 0xFF,        //     Unit Exponent
+    0xA1, 0x00,        //     Collection (Physical)
+    0x09, 0x01,        //       Usage (FFB)
+    0x81, 0x02,        //       Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              //     End Collection
+    0x55, 0x00,        //     Unit Exponent (0)
+    0x65, 0x00,        //     Unit (None)
+
     0xC0,              //   End Collection
 
     // -- PID Report --

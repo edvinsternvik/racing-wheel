@@ -7,6 +7,7 @@ pub struct RacingWheelState {
     pub buttons: [bool; 8],
     pub steering: f32,
     pub throttle: f32,
+    pub ffb: f32,
 }
 
 // PID State Report

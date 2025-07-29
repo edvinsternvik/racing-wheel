@@ -93,6 +93,39 @@ impl RacingWheel {
     }
 
     pub fn get_force_feedback(&self) -> f32 {
+        self.racing_wheel_report.ffb
+    }
+
+    pub fn advance(&mut self, delta_time_ms: u32) {
+        self.steering_velocity = (self.racing_wheel_report.steering - self.steering_prev)
+            * (1000.0 / delta_time_ms as f32)
+            * (1.0 - self.config.derivative_smoothing)
+            + self.steering_vel_prev * self.config.derivative_smoothing;
+
+        self.steering_prev = self.racing_wheel_report.steering;
+        self.steering_vel_prev = self.steering_velocity;
+
+        let mut still_running = FixedSet::new();
+        for running_effect in self.running_effects.iter_mut() {
+            running_effect.time += delta_time_ms;
+
+            let mut keep = true;
+            if let Some(effect) = self.ram_pool.get_effect(running_effect.index) {
+                if let Some(duration) = effect.effect_report.and_then(|e| e.duration) {
+                    keep = keep && duration as u32 > running_effect.time;
+                }
+                if running_effect.time > 10_000 && !effect.is_complete() {
+                    keep = false;
+                }
+            }
+
+            if keep {
+                still_running.insert(*running_effect);
+            }
+        }
+
+        self.running_effects = still_running;
+
         let mut total: f32 = 0.0;
 
         // Apply PID effects
@@ -161,38 +194,11 @@ impl RacingWheel {
             );
 
         let ffb = total * self.device_gain * self.config.gain;
-        f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo)
-    }
-
-    pub fn advance(&mut self, delta_time_ms: u32) {
-        self.steering_velocity = (self.racing_wheel_report.steering - self.steering_prev)
-            * (1000.0 / delta_time_ms as f32)
-            * (1.0 - self.config.derivative_smoothing)
-            + self.steering_vel_prev * self.config.derivative_smoothing;
-
-        self.steering_prev = self.racing_wheel_report.steering;
-        self.steering_vel_prev = self.steering_velocity;
-
-        let mut still_running = FixedSet::new();
-        for running_effect in self.running_effects.iter_mut() {
-            running_effect.time += delta_time_ms;
-
-            let mut keep = true;
-            if let Some(effect) = self.ram_pool.get_effect(running_effect.index) {
-                if let Some(duration) = effect.effect_report.and_then(|e| e.duration) {
-                    keep = keep && duration as u32 > running_effect.time;
-                }
-                if running_effect.time > 10_000 && !effect.is_complete() {
-                    keep = false;
-                }
-            }
-
-            if keep {
-                still_running.insert(*running_effect);
-            }
-        }
-
-        self.running_effects = still_running;
+        self.racing_wheel_report.ffb = f32::clamp(
+            f32::signum(ffb) * f32::powf(f32::abs(ffb), self.config.expo),
+            -1.0,
+            1.0
+        )
     }
 }
 

@@ -139,8 +139,8 @@ fn main() -> ! {
             racing_wheel.get_device_mut().set_steering(steering);
             racing_wheel.get_device_mut().set_buttons(buttons);
 
-            let ffb = racing_wheel.get_device().get_force_feedback();
             racing_wheel.get_device_mut().advance(update_dt_ms);
+            let ffb = racing_wheel.get_device().get_force_feedback();
 
             let config = racing_wheel.get_device().get_config();
             motor.set_speed(
