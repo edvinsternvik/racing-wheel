@@ -114,9 +114,6 @@ impl RacingWheel {
                 if let Some(duration) = effect.effect_report.and_then(|e| e.duration) {
                     keep = keep && duration as u32 > running_effect.time;
                 }
-                if running_effect.time > 10_000 && !effect.is_complete() {
-                    keep = false;
-                }
             }
 
             if keep {

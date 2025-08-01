@@ -1,6 +1,5 @@
 use super::{
-    descriptor::RACING_WHEEL_DESCRIPTOR, hid_reports::Report, RacingWheel, RunningEffect,
-    MAX_SIMULTANEOUS_EFFECTS,
+    descriptor::RACING_WHEEL_DESCRIPTOR, hid_reports::Report, ram_pool::RAMPool, RacingWheel, RunningEffect, MAX_SIMULTANEOUS_EFFECTS
 };
 use crate::misc::FixedSet;
 use config::{config::Config, control::WheelDeviceControl};
@@ -159,7 +158,7 @@ impl HIDDeviceType for RacingWheel {
             Report::<PIDBlockFree>::ID => {
                 let report = Report::<PIDBlockFree>::into_report(data).ok_or(())?;
                 self.ram_pool.free_effect(report.effect_block_index)?;
-                Err(())
+                Ok(Some(true))
             }
             Report::<PIDDeviceControl>::ID => {
                 let report = Report::<PIDDeviceControl>::into_report(data).ok_or(())?;
@@ -174,6 +173,7 @@ impl HIDDeviceType for RacingWheel {
                     DeviceControl::DeviceReset => {
                         self.pid_state_report = PIDState::default();
                         self.running_effects = FixedSet::new();
+                        self.ram_pool = RAMPool::new();
                     }
                     DeviceControl::DevicePause => self.pid_state_report.device_paused = true,
                     DeviceControl::DeviceContinue => self.pid_state_report.device_paused = false,

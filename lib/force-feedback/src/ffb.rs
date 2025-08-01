@@ -22,21 +22,17 @@ pub fn calculate_force_feedback(
     }
 
     match (effect.effect_report, effect.parameter_1, effect.parameter_2) {
-        (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => constant_ffb(&e, &p1, &p2, time),
-        (Some(e), Some(RampForce(p1)), Some(Envelope(p2))) => ramp_ffb(&e, &p1, &p2, time),
+        (Some(e), Some(ConstantForce(p1)), None) => constant_ffb(&e, &p1, None, time),
+        (Some(e), Some(ConstantForce(p1)), Some(Envelope(p2))) => constant_ffb(&e, &p1, Some(&p2), time),
+        (Some(e), Some(RampForce(p1)), None) => ramp_ffb(&e, &p1, None, time),
+        (Some(e), Some(RampForce(p1)), Some(Envelope(p2))) => ramp_ffb(&e, &p1, Some(&p2), time),
         (Some(_), Some(CustomForce(_p)), None) => 0.0,
-        (Some(e), Some(Periodic(p1)), Some(Envelope(p2))) => match e.effect_type {
-            EffectType::Square => periodic_ffb(&e, &p1, &p2, time, square_fn),
-            EffectType::Sine => periodic_ffb(&e, &p1, &p2, time, sine_fn),
-            EffectType::Triangle => periodic_ffb(&e, &p1, &p2, time, triangle_fn),
-            EffectType::SawtoothUp => periodic_ffb(&e, &p1, &p2, time, sawtooth_up_fn),
-            EffectType::SawtoothDown => periodic_ffb(&e, &p1, &p2, time, sawtooth_down_fn),
-            _ => 0.0,
-        },
-        (Some(e), Some(Condition(p1)), Some(Condition(p2))) => match e.effect_type {
-            EffectType::Spring => condition_ffb(&e, &p1, &p2, position),
-            EffectType::Damper => condition_ffb(&e, &p1, &p2, velocity),
-            EffectType::Inertia => condition_ffb(&e, &p1, &p2, acceleration),
+        (Some(e), Some(Periodic(p1)), None) => periodic_ffb(&e, &p1, None, time),
+        (Some(e), Some(Periodic(p1)), Some(Envelope(p2))) => periodic_ffb(&e, &p1, Some(&p2), time),
+        (Some(e), Some(Condition(p1)), _) => match e.effect_type {
+            EffectType::Spring => condition_ffb(&e, &p1, position),
+            EffectType::Damper => condition_ffb(&e, &p1, velocity),
+            EffectType::Inertia => condition_ffb(&e, &p1, acceleration),
             EffectType::Friction => 0.0,
             _ => 0.0,
         },
@@ -44,26 +40,30 @@ pub fn calculate_force_feedback(
     }
 }
 
-fn calculate_envelope(envelope: &SetEnvelope, time: u32, duration: Option<u16>) -> f32 {
-    let mut result = 1.0;
-    if time < envelope.attack_time {
-        let fade_force = envelope.attack_level
-            + (1.0 - envelope.attack_level) * (time as f32 / envelope.attack_time as f32);
-        result = f32::min(result, fade_force);
-    }
-    if let Some(duration) = duration {
-        let duration = duration as u32;
-
-        if time <= duration && time + envelope.fade_time > duration {
-            let fade_force = envelope.fade_level
-                + (1.0 - envelope.fade_level)
-                    * ((duration - time) as f32 / envelope.fade_time as f32);
-
+fn calculate_envelope(envelope: Option<&SetEnvelope>, time: u32, duration: Option<u16>) -> f32 {
+    if let Some(envelope) = envelope {
+        let mut result = 1.0;
+        if time < envelope.attack_time {
+            let fade_force = envelope.attack_level
+                + (1.0 - envelope.attack_level) * (time as f32 / envelope.attack_time as f32);
             result = f32::min(result, fade_force);
         }
-    }
+        if let Some(duration) = duration {
+            let duration = duration as u32;
 
-    result
+            if time <= duration && time + envelope.fade_time > duration {
+                let fade_force = envelope.fade_level
+                    + (1.0 - envelope.fade_level)
+                        * ((duration - time) as f32 / envelope.fade_time as f32);
+
+                result = f32::min(result, fade_force);
+            }
+        }
+
+        result
+    } else {
+        1.0
+    }
 }
 
 fn condition_force(metric: f32, condition: &SetCondition) -> f32 {
@@ -87,7 +87,7 @@ fn condition_force(metric: f32, condition: &SetCondition) -> f32 {
 fn constant_ffb(
     effect: &SetEffect,
     constant_force: &SetConstantForce,
-    envelope: &SetEnvelope,
+    envelope: Option<&SetEnvelope>,
     time: u32,
 ) -> f32 {
     let force = constant_force.magnitude;
@@ -98,7 +98,7 @@ fn constant_ffb(
 fn ramp_ffb(
     effect: &SetEffect,
     ramp_force: &SetRampForce,
-    envelope: &SetEnvelope,
+    envelope: Option<&SetEnvelope>,
     time: u32,
 ) -> f32 {
     if let Some(duration) = effect.duration {
@@ -115,7 +115,6 @@ fn ramp_ffb(
 fn condition_ffb(
     effect: &SetEffect,
     condition_1: &SetCondition,
-    _condition_2: &SetCondition,
     metric: f32,
 ) -> f32 {
     let force = condition_force(metric, condition_1);
@@ -125,10 +124,17 @@ fn condition_ffb(
 fn periodic_ffb(
     effect: &SetEffect,
     periodic: &SetPeriodic,
-    envelope: &SetEnvelope,
+    envelope: Option<&SetEnvelope>,
     time: u32,
-    f: fn(f32) -> f32,
 ) -> f32 {
+    let f = match effect.effect_type{
+        EffectType::Square => square_fn,
+        EffectType::Sine => sine_fn,
+        EffectType::Triangle => triangle_fn,
+        EffectType::SawtoothUp => sawtooth_up_fn,
+        EffectType::SawtoothDown => sawtooth_down_fn,
+        _ => |_| 0.0,
+    };
     let effect_time = time + ((periodic.phase as u64 * periodic.period as u64) / 36_000) as u32;
 
     let force_norm = f((effect_time % periodic.period) as f32 / periodic.period as f32);
